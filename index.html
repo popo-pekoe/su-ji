@@ -14,7 +14,7 @@
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
     }
-    /* 回転用のクラス（スムーズなアニメーション付き） */
+    /* 回転用のクラス */
     .rotate-180 {
       transform: rotate(180deg);
     }
@@ -25,10 +25,11 @@
   <!-- 1. スタート画面 -->
   <div id="start-screen" class="flex-1 flex flex-col justify-center items-center p-6 bg-gradient-to-br from-indigo-50 to-blue-100">
     <div class="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center border-4 border-blue-400">
-      <div class="text-6xl mb-4 text-blue-500">
+      <div class="text-6xl mb-4 text-blue-500 animate-bounce">
         <i class="fa-solid fa-graduation-cap"></i>
       </div>
-      <h1 class="text-3xl font-extrabold text-gray-800 mb-6">すうじ おぼえ</h1>
+      <h1 class="text-3xl font-extrabold text-gray-800 mb-2">すうじ おぼえ</h1>
+      <p class="text-sm text-gray-500 font-bold mb-6">1セット 12もんの おべんきょう</p>
       
       <!-- 範囲設定 -->
       <div class="mb-6 text-left">
@@ -80,11 +81,12 @@
         <button onclick="exitGame()" class="text-gray-500 hover:text-gray-700 font-semibold text-sm bg-gray-100 hover:bg-gray-200 py-1.5 px-3 rounded-lg flex items-center gap-1">
           <i class="fa-solid fa-arrow-left"></i> おわる
         </button>
-        <!-- 正解カウンター -->
-        <div class="text-sm font-bold text-gray-600 flex gap-3">
-          <span class="text-emerald-600"><i class="fa-solid fa-circle-check"></i> <span id="score-correct">0</span></span>
-          <span class="text-rose-500"><i class="fa-solid fa-circle-xmark"></i> <span id="score-wrong">0</span></span>
+        
+        <!-- 現在の進捗度表示 -->
+        <div id="progress-indicator" class="text-sm font-black px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100">
+          もんだい: 1 / 12
         </div>
+        
         <!-- 向き切り替えの簡易スイッチ -->
         <button onclick="toggleFlip()" class="text-gray-500 hover:text-gray-700 text-sm bg-gray-100 hover:bg-gray-200 p-1.5 rounded-lg" title="親用ボタンの向きを反転">
           <i class="fa-solid fa-arrows-rotate"></i> 反転
@@ -92,15 +94,15 @@
       </div>
 
       <!-- 親御さんの判定ボタン群 -->
-      <div class="grid grid-cols-3 gap-3">
+      <div class="grid grid-cols-3 gap-3" id="action-buttons">
         <!-- ✖️ボタン -->
         <button onclick="handleAnswer(false)" class="bg-rose-500 hover:bg-rose-600 text-white py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
           <span class="text-3xl font-extrabold">✖</span>
-          <span class="text-[10px] font-bold">ちがう（つぎへ）</span>
+          <span class="text-[10px] font-bold">ちがう</span>
         </button>
 
         <!-- 読み上げ・答えボタン -->
-        <button onclick="showReading()" class="bg-amber-400 hover:bg-amber-500 text-amber-950 py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
+        <button onclick="showReading(true)" class="bg-amber-400 hover:bg-amber-500 text-amber-950 py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
           <span class="text-2xl"><i class="fa-solid fa-volume-high"></i></span>
           <span class="text-xs font-bold">よみ・こたえ</span>
         </button>
@@ -108,26 +110,67 @@
         <!-- ◯ボタン -->
         <button onclick="handleAnswer(true)" class="bg-emerald-500 hover:bg-emerald-600 text-white py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
           <span class="text-3xl font-extrabold">◯</span>
-          <span class="text-[10px] font-bold">あってる（つぎへ）</span>
+          <span class="text-[10px] font-bold">あってる</span>
         </button>
       </div>
     </div>
 
     <!-- お子様用メイン表示エリア（画面中央〜下部） -->
-    <div class="flex-1 flex flex-col justify-center items-center my-4">
-      <div id="target-display" class="flex flex-col justify-center items-center transition-all duration-300">
+    <div class="flex-1 flex flex-col justify-center items-center my-4 relative w-full overflow-hidden min-h-[320px]">
+      
+      <!-- 背景にいっぱい散りばめられる同じ数字のコンテナ -->
+      <div id="bg-numbers-container" class="absolute inset-0 pointer-events-none select-none overflow-hidden transition-all duration-300">
+        <!-- JavaScriptでフォント違いの数字を動的生成 -->
+      </div>
+
+      <!-- 手前を向いているメイン表示エリア -->
+      <div id="target-display" class="flex flex-col justify-center items-center transition-all duration-300 relative z-10">
         <!-- 巨大な数字 -->
-        <div id="number-text" class="text-[10rem] md:text-[14rem] font-extrabold text-slate-800 leading-none tracking-tight select-none">
+        <div id="number-text" class="text-[10rem] md:text-[14rem] font-extrabold text-slate-800 leading-none tracking-tight select-none drop-shadow-md">
           0
         </div>
         
         <!-- 読み方 (最初は透明/非表示) -->
-        <div id="reading-text" class="h-16 text-3xl md:text-4xl font-bold text-blue-600 mt-4 opacity-0 transition-opacity duration-200 select-none bg-blue-50 px-6 py-2 rounded-full border border-blue-100">
+        <div id="reading-text" class="h-16 text-3xl md:text-4xl font-bold text-blue-600 mt-4 opacity-0 transition-opacity duration-200 select-none bg-blue-50 px-6 py-2 rounded-full border border-blue-100 shadow-sm">
           よみかた
         </div>
       </div>
     </div>
 
+  </div>
+
+  <!-- 3. 結果発表画面 (最初は非表示) -->
+  <div id="result-screen" class="hidden fixed inset-0 bg-slate-900 bg-opacity-80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+    <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border-4 border-yellow-400 relative overflow-hidden">
+      <!-- クラッカーの装飾 -->
+      <div class="text-7xl mb-4 text-yellow-500 animate-bounce">
+        <i class="fa-solid fa-crown"></i>
+      </div>
+      <h2 class="text-3xl font-black text-gray-800 mb-2">お勉強おわり！</h2>
+      <p class="text-emerald-600 font-bold mb-6 text-lg">たいへんよくできました！💮</p>
+      
+      <!-- スコア内訳 -->
+      <div class="bg-slate-50 p-4 rounded-2xl border border-gray-100 mb-6 text-left space-y-3 text-sm text-gray-600 font-bold">
+        <div class="flex justify-between items-center">
+          <span>🎯 いっぱつで あたったよ：</span>
+          <span class="text-lg text-emerald-600" id="result-perfect">0 / 12</span>
+        </div>
+        <div class="flex justify-between items-center border-t border-gray-200 pt-2">
+          <span>🔄 おさらいで あたったよ：</span>
+          <span class="text-lg text-amber-500" id="result-learned">0 / 0</span>
+        </div>
+      </div>
+
+      <!-- ボタン群 -->
+      <div class="space-y-3">
+        <button onclick="restartWithSameSettings()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-extrabold py-3 px-6 rounded-xl text-lg shadow-md transform active:scale-95 transition-all">
+          もう一回おなじ範囲で遊ぶ
+        </button>
+        <button onclick="exitGame()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-6 rounded-xl text-md transform active:scale-95 transition-all">
+          スタート画面に戻る
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- 効果音代わりの簡易トースト通知用コンテナ -->
@@ -140,18 +183,81 @@
     let config = {
       min: 1,
       max: 10,
-      isFlipped: false // 初期状態はOFF（同じ向き）
+      isFlipped: false
     };
 
     let state = {
+      // 12問サイクル用
+      questions: [],        // 1セット12問の数字リスト
+      currentIndex: 0,      // メインセットの現在位置
+      isReviewMode: false,  // 復習（おさらい）モード中か
+      
+      // 復習セッション用（1周限定）
+      wrongNumbers: [],     // ✖️が押された数字（重複なしのプール）
+      reviewQuestions: [],  // 現在のおさらいリスト
+      reviewIndex: 0,       // おさらいリストの現在位置
+
+      // スコア表示用
+      firstTryCorrectCount: 0, // 1発で正解できた数
+      reviewCorrectCount: 0,   // おさらいモードで正解できた数
+      totalWrongCount: 0,      // 間違えた回数のトータル
+      
       currentNumber: 0,
-      correctCount: 0,
-      wrongCount: 0,
-      isReadingShown: false
+      isReadingShown: false,
+      isTransitioning: false   // 連打・誤操作防止用フラグ
     };
+
+    // 安全なタイマー管理（画面遷移時のクリア用）
+    let activeTimers = [];
+    function setSafeTimeout(fn, delay) {
+      const timer = setTimeout(() => {
+        fn();
+        activeTimers = activeTimers.filter(t => t !== timer);
+      }, delay);
+      activeTimers.push(timer);
+      return timer;
+    }
+    function clearAllTimers() {
+      activeTimers.forEach(t => clearTimeout(t));
+      activeTimers = [];
+    }
+
+    // シャッフル関数
+    function shuffleArray(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // 1セット12問の数字を範囲から選定
+    function generateSessionQuestions(min, max) {
+      const pool = [];
+      for (let i = min; i <= max; i++) {
+        pool.push(i);
+      }
+      
+      let result = [];
+      if (pool.length >= 12) {
+        const shuffledPool = shuffleArray(pool);
+        result = shuffledPool.slice(0, 12);
+      } else {
+        result = [...pool];
+        while (result.length < 12) {
+          const randNum = pool[Math.floor(Math.random() * pool.length)];
+          result.push(randNum);
+        }
+        result = shuffleArray(result);
+      }
+      return result;
+    }
 
     // 数字の「よみ」マッピング
     function getReadingText(num) {
+      if (num === undefined || num === null) return '';
+
       const readings = {
         0: 'れい', 1: 'いち', 2: 'に', 3: 'さん', 4: 'よん',
         5: 'ご', 6: 'ろく', 7: 'なな', 8: 'はち', 9: 'きゅう', 10: 'じゅう'
@@ -189,18 +295,27 @@
       const display = document.getElementById('target-display');
       
       if (config.isFlipped) {
-        // むかいあわせモード：ボタンを180度回転（奥の親用）、数字は0度（手前の子供用）
         controlPanel.classList.add('rotate-180');
         display.classList.remove('rotate-180');
       } else {
-        // 通常モード：どちらも0度（全員手前向き）
         controlPanel.classList.remove('rotate-180');
         display.classList.remove('rotate-180');
       }
     }
 
-    // ゲーム開始
+    // 操作ボタンの有効・無効切り替え
+    function disableActionButtons(disabled) {
+      const container = document.getElementById('action-buttons');
+      if (disabled) {
+        container.classList.add('opacity-40', 'pointer-events-none');
+      } else {
+        container.classList.remove('opacity-40', 'pointer-events-none');
+      }
+    }
+
+    // ゲーム開始処理
     function startGame() {
+      clearAllTimers();
       const minInput = parseInt(document.getElementById('min-val').value);
       const maxInput = parseInt(document.getElementById('max-val').value);
 
@@ -213,55 +328,157 @@
       config.max = maxInput;
       config.isFlipped = document.getElementById('flip-mode').checked;
 
-      // カウンターリセット
-      state.correctCount = 0;
-      state.wrongCount = 0;
-      updateScoreboard();
+      // 12問サイクル用の状態を完全初期化
+      state.questions = generateSessionQuestions(config.min, config.max);
+      state.currentIndex = 0;
+      state.isReviewMode = false;
+      state.wrongNumbers = [];
+      state.reviewQuestions = [];
+      state.reviewIndex = 0;
+      
+      state.firstTryCorrectCount = 0;
+      state.reviewCorrectCount = 0;
+      state.totalWrongCount = 0;
+      
+      // 最初は操作可能にしてから開始
+      state.isTransitioning = true;
+      disableActionButtons(true);
 
-      // 画面の切り替え
+      // 画面の切り替え (この切り替え処理をしっかりと復活させました)
       document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('result-screen').classList.add('hidden');
       document.getElementById('game-screen').classList.remove('hidden');
 
       applyFlip();
       nextQuestion();
     }
 
+    // 同じ設定でもう一度開始
+    function restartWithSameSettings() {
+      startGame();
+    }
+
     // ゲーム終了（スタート画面に戻る）
     function exitGame() {
+      clearAllTimers();
+      state.isTransitioning = false;
+      disableActionButtons(false);
       document.getElementById('game-screen').classList.add('hidden');
+      document.getElementById('result-screen').classList.add('hidden');
       document.getElementById('start-screen').classList.remove('hidden');
     }
 
-    // 次の数字を出す
+    // 進捗インジケーターの表示更新
+    function updateProgressUI() {
+      const indicator = document.getElementById('progress-indicator');
+      if (!state.isReviewMode) {
+        indicator.innerText = `もんだい: ${state.currentIndex + 1} / 12`;
+        indicator.className = "text-sm font-black px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100";
+      } else {
+        const roundProgress = state.reviewIndex + 1;
+        const roundTotal = state.reviewQuestions.length;
+        indicator.innerText = `おさらい: ${roundProgress} / ${roundTotal}`;
+        indicator.className = "text-sm font-black px-3 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-100 animate-pulse";
+      }
+    }
+
+    // 背景に色んなフォントの同じ数字を散りばめる
+    function generateBackgroundNumbers(num) {
+      if (num === undefined || num === null) return;
+      
+      const container = document.getElementById('bg-numbers-container');
+      container.innerHTML = '';
+
+      const fonts = [
+        { class: 'font-sans font-normal' },
+        { class: 'font-sans font-bold' },
+        { class: 'font-serif font-normal' },
+        { class: 'font-serif font-bold' },
+        { class: 'font-mono font-normal' },
+        { class: 'font-mono font-bold' },
+        { style: 'font-family: Impact, sans-serif; font-weight: 900;' },
+        { style: 'font-family: Georgia, serif; font-style: italic;' },
+        { style: 'font-family: "Courier New", monospace; font-weight: bold;' },
+        { style: 'font-family: "Times New Roman", serif; font-style: italic;' },
+        { style: 'font-family: "Comic Sans MS", cursive; font-weight: bold;' },
+        { style: 'font-family: "Trebuchet MS", sans-serif; font-weight: bold;' },
+        { style: 'font-family: "Arial Black", sans-serif;' },
+        { style: 'font-family: "Palatino Linotype", serif;' }
+      ];
+
+      const numCount = 14;
+
+      for (let i = 0; i < numCount; i++) {
+        const el = document.createElement('div');
+        el.innerText = num;
+        el.classList.add('absolute', 'text-slate-800', 'select-none', 'pointer-events-none');
+        
+        // 不透明度10%〜16%（薄くうっすら見えるコントラスト）
+        const opacity = (Math.random() * 6 + 10).toFixed(1);
+        el.style.opacity = (opacity / 100).toString();
+
+        const top = Math.floor(Math.random() * 80) + 10;
+        const left = Math.floor(Math.random() * 80) + 10;
+        el.style.top = `${top}%`;
+        el.style.left = `${left}%`;
+
+        const size = (Math.random() * 3.5 + 2).toFixed(1);
+        el.style.fontSize = `${size}rem`;
+
+        const rotate = Math.floor(Math.random() * 80) - 40;
+        el.style.transform = `translate(-50%, -50%) rotate(${rotate}deg)`;
+
+        const font = fonts[Math.floor(Math.random() * fonts.length)];
+        if (font.class) {
+          font.class.split(' ').forEach(cls => el.classList.add(cls));
+        }
+        if (font.style) {
+          el.style.cssText += ';' + font.style;
+        }
+
+        container.appendChild(el);
+      }
+    }
+
+    // 次の問題を表示する
     function nextQuestion() {
       state.isReadingShown = false;
       
-      // 読み表示を隠す
       const readingEl = document.getElementById('reading-text');
       readingEl.classList.add('opacity-0');
 
-      // ランダムに数字を決定
-      const range = config.max - config.min + 1;
-      let nextNum = Math.floor(Math.random() * range) + config.min;
-
-      if (range > 1 && nextNum === state.currentNumber) {
-        nextNum = Math.floor(Math.random() * range) + config.min;
+      if (!state.isReviewMode) {
+        state.currentNumber = state.questions[state.currentIndex];
+      } else {
+        state.currentNumber = state.reviewQuestions[state.reviewIndex];
       }
-
-      state.currentNumber = nextNum;
       
-      // 画面反映
+      // 安全対策ガード: 対象データがうまく読み込めなかった場合は結果画面に退避
+      if (state.currentNumber === undefined || state.currentNumber === null) {
+        state.isTransitioning = false;
+        disableActionButtons(false);
+        showResults();
+        return;
+      }
+      
       document.getElementById('number-text').innerText = state.currentNumber;
       readingEl.innerText = getReadingText(state.currentNumber);
+      
+      updateProgressUI();
+      generateBackgroundNumbers(state.currentNumber);
+
+      // 新しい問題が表示されたタイミングでロックを完全に解除
+      state.isTransitioning = false;
+      disableActionButtons(false);
     }
 
     // 読みを表示する（＆音声読み上げ）
-    function showReading() {
+    function showReading(forceSpeech = true) {
       const readingEl = document.getElementById('reading-text');
       readingEl.classList.remove('opacity-0');
       state.isReadingShown = true;
 
-      if ('speechSynthesis' in window) {
+      if (forceSpeech && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(state.currentNumber.toString());
         utterance.lang = 'ja-JP';
@@ -270,21 +487,119 @@
       }
     }
 
-    // 判定ボタン（◯または✖️）
+    // 判定処理（◯または✖️）
     function handleAnswer(isCorrect) {
-      if (isCorrect) {
-        state.correctCount++;
+      if (state.isTransitioning) return; // 演出や遷移中の連続タップを徹底ブロック
+
+      // ボタンを即座に一時ロック
+      state.isTransitioning = true;
+      disableActionButtons(true);
+
+      if (!isCorrect) {
+        // 間違い（✖️）を押した時：数字はそのままに、間を持ってから正解を自動解説する
+        // 1. 1.0秒の「間（ま）」を置いておさらいする
+        setSafeTimeout(() => {
+          // 2. 正解のよみを自動表示＆読み上げ
+          showReading(true);
+
+          // 3. お子様が理解する時間を1.8秒とってから次に進む
+          setSafeTimeout(() => {
+            // ここではロック解除せずそのまま遷移関数を呼ぶ（ロック解除はnextQuestionで行う）
+            proceedToNext(false);
+          }, 1800);
+        }, 1000);
+
       } else {
-        state.wrongCount++;
+        // 合っていた（◯）時はすぐに次へ
+        proceedToNext(true);
       }
-      updateScoreboard();
-      nextQuestion();
     }
 
-    // スコアボードの更新
-    function updateScoreboard() {
-      document.getElementById('score-correct').innerText = state.correctCount;
-      document.getElementById('score-wrong').innerText = state.wrongCount;
+    // 実際のスコア処理と次の問題への遷移
+    function proceedToNext(isCorrect) {
+      if (!state.isReviewMode) {
+        // --- 通常モードの判定 ---
+        if (isCorrect) {
+          state.firstTryCorrectCount++;
+        } else {
+          state.totalWrongCount++;
+          // 間違えた数字を記録（重複なし）
+          if (!state.wrongNumbers.includes(state.currentNumber)) {
+            state.wrongNumbers.push(state.currentNumber);
+          }
+        }
+        
+        state.currentIndex++;
+        
+        if (state.currentIndex < 12) {
+          nextQuestion();
+        } else {
+          // 12問全て終了時
+          if (state.wrongNumbers.length === 0) {
+            // 全問正解ならそのままクリア（結果表示の前にロック解除）
+            state.isTransitioning = false;
+            disableActionButtons(false);
+            showResults();
+          } else {
+            // 間違いがあったら、1周だけおさらいへ進む
+            startReviewMode();
+          }
+        }
+      } else {
+        // --- おさらいモードの判定（1周限定） ---
+        if (isCorrect) {
+          state.reviewCorrectCount++;
+        } else {
+          state.totalWrongCount++;
+        }
+        
+        state.reviewIndex++;
+        
+        if (state.reviewIndex < state.reviewQuestions.length) {
+          nextQuestion();
+        } else {
+          // おさらいの1周が終了したら即終了
+          state.isTransitioning = false;
+          disableActionButtons(false);
+          showResults();
+        }
+      }
+    }
+
+    // おさらいモードの開始 (1周限定)
+    function startReviewMode() {
+      state.isReviewMode = true;
+      // 間違えた数字をシャッフル
+      state.reviewQuestions = shuffleArray(state.wrongNumbers);
+      state.reviewIndex = 0;
+      
+      // おさらい移行までの1秒のウェイト時間も、ボタン入力を完全にロックしたままにする
+      state.isTransitioning = true;
+      disableActionButtons(true);
+      
+      showToast(`🔄 まちがえた ${state.reviewQuestions.length}もん の おさらいいくよ！`);
+      
+      setSafeTimeout(() => {
+        nextQuestion(); // ここでおさらいの数字が出ると同時に、nextQuestion内の処理で安全にロック解除
+      }, 1000);
+    }
+
+    // 結果表示
+    function showResults() {
+      // 1発目の正解数
+      document.getElementById('result-perfect').innerText = `${state.firstTryCorrectCount} / 12`;
+      
+      // おさらいの正解数
+      const learnedEl = document.getElementById('result-learned');
+      if (state.wrongNumbers.length > 0) {
+        learnedEl.innerText = `${state.reviewCorrectCount} / ${state.wrongNumbers.length}`;
+        learnedEl.parentElement.classList.remove('hidden');
+      } else {
+        // 1発全問正解だった場合
+        learnedEl.innerText = "なし (パーフェクト！💮)";
+      }
+      
+      document.getElementById('result-screen').classList.remove('hidden');
     }
 
     // トースト通知を表示
@@ -293,9 +608,9 @@
       toast.innerText = message;
       toast.classList.remove('opacity-0');
       
-      setTimeout(() => {
+      setSafeTimeout(() => {
         toast.classList.add('opacity-0');
-      }, 1500);
+      }, 1800);
     }
   </script>
 </body>
