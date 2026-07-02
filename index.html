@@ -18,6 +18,35 @@
     .rotate-180 {
       transform: rotate(180deg);
     }
+    /* ピョコッと飛び出すアニメーション */
+    @keyframes popIn {
+      0% { transform: scale(0.7); opacity: 0; }
+      70% { transform: scale(1.1); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop-in {
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* ガチャーンと上から降ってくるアニメーション */
+    @keyframes dropSlot {
+      0% { transform: translateY(-250px) scaleY(1.4); opacity: 0; }
+      55% { transform: translateY(15px) scaleY(0.85); opacity: 1; }
+      75% { transform: translateY(-8px) scaleY(1.1); }
+      100% { transform: translateY(0) scaleY(1); opacity: 1; }
+    }
+    .animate-drop-slot {
+      animation: dropSlot 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    }
+
+    /* ガチャーンの瞬間の衝撃波リング */
+    @keyframes shockwave {
+      0% { transform: scale(0.7); opacity: 1; border-width: 8px; }
+      100% { transform: scale(1.5); opacity: 0; border-width: 1px; }
+    }
+    .animate-shockwave {
+      animation: shockwave 0.4s ease-out forwards;
+    }
   </style>
 </head>
 <body class="bg-slate-100 font-sans min-h-screen flex flex-col justify-between overflow-hidden select-none">
@@ -39,7 +68,7 @@
         <div class="grid grid-cols-3 gap-2 mb-4">
           <button onclick="setRange(1, 10)" class="bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-2 px-3 rounded-xl text-sm transition-colors">1 〜 10</button>
           <button onclick="setRange(1, 20)" class="bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-2 px-3 rounded-xl text-sm transition-colors">1 〜 20</button>
-          <button onclick="setRange(10, 99)" class="bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-2 px-3 rounded-xl text-sm transition-colors">10 〜 99</button>
+          <button onclick="setRange(1, 150)" class="bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-2 px-3 rounded-xl text-sm transition-colors">1 〜 150</button>
         </div>
 
         <!-- 直接入力 -->
@@ -71,7 +100,7 @@
     </div>
   </div>
 
-  <!-- 2. メインゲーム画面 (最初は非表示) -->
+  <!-- 2. メインゲーム画面 -->
   <div id="game-screen" class="hidden flex-1 flex flex-col justify-between p-4 pb-8 select-none">
     
     <!-- 親御さん用コントロールエリア（画面上部） -->
@@ -98,11 +127,11 @@
         <!-- ✖️ボタン -->
         <button onclick="handleAnswer(false)" class="bg-rose-500 hover:bg-rose-600 text-white py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
           <span class="text-3xl font-extrabold">✖</span>
-          <span class="text-[10px] font-bold">ちがう</span>
+          <span class="text-[10px] font-bold" id="label-wrong">ちがう</span>
         </button>
 
         <!-- 読み上げ・答えボタン -->
-        <button onclick="showReading(true)" class="bg-amber-400 hover:bg-amber-500 text-amber-950 py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
+        <button onclick="handleShowReadingButton()" class="bg-amber-400 hover:bg-amber-500 text-amber-950 py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
           <span class="text-2xl"><i class="fa-solid fa-volume-high"></i></span>
           <span class="text-xs font-bold">よみ・こたえ</span>
         </button>
@@ -110,28 +139,39 @@
         <!-- ◯ボタン -->
         <button onclick="handleAnswer(true)" class="bg-emerald-500 hover:bg-emerald-600 text-white py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
           <span class="text-3xl font-extrabold">◯</span>
-          <span class="text-[10px] font-bold">あってる</span>
+          <span class="text-[10px] font-bold" id="label-correct">あってる</span>
         </button>
       </div>
     </div>
 
     <!-- お子様用メイン表示エリア（画面中央〜下部） -->
-    <div class="flex-1 flex flex-col justify-center items-center my-4 relative w-full overflow-hidden min-h-[320px]">
+    <div class="flex-1 flex flex-col justify-center items-center my-4 relative w-full overflow-hidden min-h-[360px]">
       
-      <!-- 背景にいっぱい散りばめられる同じ数字のコンテナ -->
+      <!-- 背景にいっぱい散りばめられる同じ数字 of different fonts -->
       <div id="bg-numbers-container" class="absolute inset-0 pointer-events-none select-none overflow-hidden transition-all duration-300">
         <!-- JavaScriptでフォント違いの数字を動的生成 -->
       </div>
 
       <!-- 手前を向いているメイン表示エリア -->
-      <div id="target-display" class="flex flex-col justify-center items-center transition-all duration-300 relative z-10">
-        <!-- 巨大な数字 -->
-        <div id="number-text" class="text-[10rem] md:text-[14rem] font-extrabold text-slate-800 leading-none tracking-tight select-none drop-shadow-md">
+      <div id="target-display" class="flex flex-col justify-center items-center transition-all duration-300 relative z-10 w-full">
+        
+        <!-- 立体スロット合体ステージ -->
+        <div id="slot-stage" class="hidden relative h-40 md:h-52 flex justify-center items-center select-none mb-4 font-mono">
+          <!-- ここに JavaScript でリール枠と落下カードが動的に生成されます -->
+        </div>
+
+        <!-- 巨大な数字（通常時の問題表示） -->
+        <div id="number-text" class="text-[9rem] md:text-[13rem] font-extrabold text-slate-800 leading-none tracking-tight select-none drop-shadow-md transition-transform duration-300 flex justify-center items-center">
           0
         </div>
         
-        <!-- 読み方 (最初は透明/非表示) -->
-        <div id="reading-text" class="h-16 text-3xl md:text-4xl font-bold text-blue-600 mt-4 opacity-0 transition-opacity duration-200 select-none bg-blue-50 px-6 py-2 rounded-full border border-blue-100 shadow-sm">
+        <!-- 10の位・100の位 桁分解パズルブロック表示エリア -->
+        <div id="decomposition-container" class="flex flex-wrap gap-3 mt-4 justify-center items-center w-full max-w-md px-4 min-h-[110px]">
+          <!-- ここに JavaScript で [100] [20] [5] などのカードが動的に生成されます -->
+        </div>
+
+        <!-- 読み方 -->
+        <div id="reading-text" class="h-14 text-2xl md:text-3xl font-bold text-blue-600 mt-2 opacity-0 transition-opacity duration-200 select-none bg-blue-50 px-6 py-1.5 rounded-full border border-blue-100 shadow-sm">
           よみかた
         </div>
       </div>
@@ -139,7 +179,7 @@
 
   </div>
 
-  <!-- 3. 結果発表画面 (最初は非表示) -->
+  <!-- 3. 結果発表画面 -->
   <div id="result-screen" class="hidden fixed inset-0 bg-slate-900 bg-opacity-80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
     <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border-4 border-yellow-400 relative overflow-hidden">
       <!-- クラッカーの装飾 -->
@@ -188,26 +228,30 @@
 
     let state = {
       // 12問サイクル用
-      questions: [],        // 1セット12問の数字リスト
-      currentIndex: 0,      // メインセットの現在位置
-      isReviewMode: false,  // 復習（おさらい）モード中か
+      questions: [],        
+      currentIndex: 0,      
+      isReviewMode: false,  
       
-      // 復習セッション用（1周限定）
-      wrongNumbers: [],     // ✖️が押された数字（重複なしのプール）
-      reviewQuestions: [],  // 現在のおさらいリスト
-      reviewIndex: 0,       // おさらいリストの現在位置
+      // 復習セッション用
+      wrongNumbers: [],     
+      reviewQuestions: [],  
+      reviewIndex: 0,       
 
       // スコア表示用
-      firstTryCorrectCount: 0, // 1発で正解できた数
-      reviewCorrectCount: 0,   // おさらいモードで正解できた数
-      totalWrongCount: 0,      // 間違えた回数のトータル
+      firstTryCorrectCount: 0, 
+      reviewCorrectCount: 0,   
+      totalWrongCount: 0,      
       
       currentNumber: 0,
       isReadingShown: false,
-      isTransitioning: false   // 連打・誤操作防止用フラグ
+      isTransitioning: false,   // 連打・誤操作防止用フラグ
+
+      // 手動確認待ち管理用
+      isAwaitingManualConfirm: false,
+      firstInputIsCorrect: null
     };
 
-    // 安全なタイマー管理（画面遷移時のクリア用）
+    // 安全なタイマー管理
     let activeTimers = [];
     function setSafeTimeout(fn, delay) {
       const timer = setTimeout(() => {
@@ -232,7 +276,7 @@
       return arr;
     }
 
-    // 1セット12問の数字を範囲から選定
+    // 1セット12問の数字を選定
     function generateSessionQuestions(min, max) {
       const pool = [];
       for (let i = min; i <= max; i++) {
@@ -254,42 +298,96 @@
       return result;
     }
 
-    // 数字の「よみ」マッピング
-    function getReadingText(num) {
-      if (num === undefined || num === null) return '';
-
-      const readings = {
-        0: 'れい', 1: 'いち', 2: 'に', 3: 'さん', 4: 'よん',
-        5: 'ご', 6: 'ろく', 7: 'なな', 8: 'はち', 9: 'きゅう', 10: 'じゅう'
-      };
-
-      if (readings[num]) return readings[num];
-
-      if (num > 10 && num < 100) {
-        let ten = Math.floor(num / 10);
-        let one = num % 10;
-        let tenStr = ten === 1 ? 'じゅう' : readings[ten] + 'じゅう';
-        let oneStr = one === 0 ? '' : readings[one];
-        return tenStr + oneStr;
+    // 桁分解パズルロジック
+    function getDigitDecomposition(num) {
+      if (num === 0) {
+        return [{
+          value: 0,
+          label: '0',
+          reading: 'れい',
+          color: 'bg-slate-100 text-slate-800 border-slate-300'
+        }];
       }
 
-      return num.toString();
+      const list = [];
+      const numStr = num.toString();
+      const len = numStr.length;
+
+      if (len >= 3) {
+        const hDigit = parseInt(numStr.charAt(len - 3));
+        if (hDigit > 0) {
+          const val = hDigit * 100;
+          let rd = '';
+          if (hDigit === 1) rd = 'ひゃく';
+          else if (hDigit === 3) rd = 'さんびゃく';
+          else if (hDigit === 6) rd = 'ろっぴゃく';
+          else if (hDigit === 8) rd = 'はっぴゃく';
+          else {
+            const hReadings = {2:'に', 4:'よん', 5:'ご', 7:'なな', 9:'きゅう'};
+            rd = hReadings[hDigit] + 'ひゃく';
+          }
+          list.push({
+            value: val,
+            label: val.toString(),
+            reading: rd,
+            color: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+            textColor: 'text-emerald-500'
+          });
+        }
+      }
+
+      if (len >= 2) {
+        const tDigit = parseInt(numStr.charAt(len - 2));
+        if (tDigit > 0) {
+          const val = tDigit * 10;
+          let rd = '';
+          if (tDigit === 1) rd = 'じゅう';
+          else {
+            const tReadings = {2:'に', 3:'さん', 4:'よん', 5:'ご', 6:'ろく', 7:'なな', 8:'はち', 9:'きゅう'};
+            rd = tReadings[tDigit] + 'じゅう';
+          }
+          list.push({
+            value: val,
+            label: val.toString(),
+            reading: rd,
+            color: 'bg-sky-100 text-sky-800 border-sky-300',
+            textColor: 'text-sky-500'
+          });
+        }
+      }
+
+      const oDigit = parseInt(numStr.charAt(len - 1));
+      if (oDigit > 0) {
+        const oReadings = {1:'いち', 2:'に', 3:'さん', 4:'よん', 5:'ご', 6:'ろく', 7:'なな', 8:'はち', 9:'きゅう'};
+        list.push({
+          value: oDigit,
+          label: oDigit.toString(),
+          reading: oReadings[oDigit],
+          color: 'bg-rose-100 text-rose-800 border-rose-300',
+          textColor: 'text-rose-500'
+        });
+      }
+
+      return list;
     }
 
-    // クイック範囲設定ボタン用
+    function getReadingText(num) {
+      if (num === undefined || num === null) return '';
+      const decomp = getDigitDecomposition(num);
+      return decomp.map(item => item.reading).join('');
+    }
+
     function setRange(min, max) {
       document.getElementById('min-val').value = min;
       document.getElementById('max-val').value = max;
     }
 
-    // 反転表示の切り替え
     function toggleFlip() {
       config.isFlipped = !config.isFlipped;
       applyFlip();
       showToast(config.isFlipped ? "🔄 むかいあわせ（親：奥、子：手前）" : "🔄 おなじむき（全員手前向き）");
     }
 
-    // 画面のパーツに回転クラスを適用
     function applyFlip() {
       const controlPanel = document.getElementById('control-panel');
       const display = document.getElementById('target-display');
@@ -303,7 +401,6 @@
       }
     }
 
-    // 操作ボタンの有効・無効切り替え
     function disableActionButtons(disabled) {
       const container = document.getElementById('action-buttons');
       if (disabled) {
@@ -313,7 +410,6 @@
       }
     }
 
-    // ゲーム開始処理
     function startGame() {
       clearAllTimers();
       const minInput = parseInt(document.getElementById('min-val').value);
@@ -328,7 +424,6 @@
       config.max = maxInput;
       config.isFlipped = document.getElementById('flip-mode').checked;
 
-      // 12問サイクル用の状態を完全初期化
       state.questions = generateSessionQuestions(config.min, config.max);
       state.currentIndex = 0;
       state.isReviewMode = false;
@@ -340,37 +435,48 @@
       state.reviewCorrectCount = 0;
       state.totalWrongCount = 0;
       
-      // 最初は操作可能にしてから開始
       state.isTransitioning = true;
       disableActionButtons(true);
 
-      // 画面の切り替え (この切り替え処理をしっかりと復活させました)
+      state.isAwaitingManualConfirm = false;
+      state.firstInputIsCorrect = null;
+
       document.getElementById('start-screen').classList.add('hidden');
       document.getElementById('result-screen').classList.add('hidden');
       document.getElementById('game-screen').classList.remove('hidden');
+
+      document.getElementById('decomposition-container').innerHTML = '';
+      document.getElementById('slot-stage').innerHTML = '';
+      document.getElementById('slot-stage').classList.add('hidden');
+      document.getElementById('number-text').classList.remove('hidden');
 
       applyFlip();
       nextQuestion();
     }
 
-    // 同じ設定でもう一度開始
     function restartWithSameSettings() {
       startGame();
     }
 
-    // ゲーム終了（スタート画面に戻る）
     function exitGame() {
       clearAllTimers();
       state.isTransitioning = false;
+      state.isAwaitingManualConfirm = false;
       disableActionButtons(false);
       document.getElementById('game-screen').classList.add('hidden');
       document.getElementById('result-screen').classList.add('hidden');
       document.getElementById('start-screen').classList.remove('hidden');
     }
 
-    // 進捗インジケーターの表示更新
     function updateProgressUI() {
       const indicator = document.getElementById('progress-indicator');
+      
+      if (state.isAwaitingManualConfirm) {
+        indicator.innerText = `おして次へ ➔`;
+        indicator.className = "text-sm font-black px-4 py-1 bg-amber-500 text-white rounded-full border border-amber-600 animate-pulse";
+        return;
+      }
+
       if (!state.isReviewMode) {
         indicator.innerText = `もんだい: ${state.currentIndex + 1} / 12`;
         indicator.className = "text-sm font-black px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100";
@@ -382,7 +488,6 @@
       }
     }
 
-    // 背景に色んなフォントの同じ数字を散りばめる
     function generateBackgroundNumbers(num) {
       if (num === undefined || num === null) return;
       
@@ -413,7 +518,6 @@
         el.innerText = num;
         el.classList.add('absolute', 'text-slate-800', 'select-none', 'pointer-events-none');
         
-        // 不透明度10%〜16%（薄くうっすら見えるコントラスト）
         const opacity = (Math.random() * 6 + 10).toFixed(1);
         el.style.opacity = (opacity / 100).toString();
 
@@ -440,12 +544,68 @@
       }
     }
 
-    // 次の問題を表示する
+    function renderColoredMainNumber(num, isColored = false) {
+      const container = document.getElementById('number-text');
+      container.innerHTML = ''; 
+      
+      const numStr = num.toString();
+      const len = numStr.length;
+
+      for (let i = 0; i < len; i++) {
+        const char = numStr.charAt(i);
+        const span = document.createElement('span');
+        span.innerText = char;
+        span.className = "text-slate-800 transition-colors duration-300";
+
+        if (isColored) {
+          const currentPosFromRight = len - i;
+
+          if (currentPosFromRight === 3) {
+            if (parseInt(char) > 0) {
+              span.className = "text-emerald-500 font-black transition-colors duration-300";
+            } else {
+              span.className = "text-slate-300 font-normal transition-colors duration-300"; 
+            }
+          } else if (currentPosFromRight === 2) {
+            if (parseInt(char) > 0) {
+              span.className = "text-sky-500 font-black transition-colors duration-300";
+            } else {
+              span.className = "text-slate-300 font-normal transition-colors duration-300"; 
+            }
+          } else if (currentPosFromRight === 1) {
+            if (parseInt(char) > 0 || num === 0) {
+              span.className = "text-rose-500 font-black transition-colors duration-300";
+            } else {
+              span.className = "text-slate-300 font-normal transition-colors duration-300"; 
+            }
+          }
+        }
+
+        container.appendChild(span);
+      }
+    }
+
     function nextQuestion() {
       state.isReadingShown = false;
+      state.isAwaitingManualConfirm = false; 
       
       const readingEl = document.getElementById('reading-text');
       readingEl.classList.add('opacity-0');
+
+      const decompContainer = document.getElementById('decomposition-container');
+      decompContainer.innerHTML = '';
+
+      // スロットステージの初期化
+      const slotStage = document.getElementById('slot-stage');
+      slotStage.innerHTML = '';
+      slotStage.classList.add('hidden');
+
+      const numTextEl = document.getElementById('number-text');
+      numTextEl.classList.remove('hidden');
+      numTextEl.style.transform = 'scale(1)';
+
+      document.getElementById('label-wrong').innerText = "ちがう";
+      document.getElementById('label-correct').innerText = "あってる";
 
       if (!state.isReviewMode) {
         state.currentNumber = state.questions[state.currentIndex];
@@ -453,7 +613,6 @@
         state.currentNumber = state.reviewQuestions[state.reviewIndex];
       }
       
-      // 安全対策ガード: 対象データがうまく読み込めなかった場合は結果画面に退避
       if (state.currentNumber === undefined || state.currentNumber === null) {
         state.isTransitioning = false;
         disableActionButtons(false);
@@ -461,69 +620,370 @@
         return;
       }
       
-      document.getElementById('number-text').innerText = state.currentNumber;
+      renderColoredMainNumber(state.currentNumber, false);
       readingEl.innerText = getReadingText(state.currentNumber);
       
       updateProgressUI();
       generateBackgroundNumbers(state.currentNumber);
 
-      // 新しい問題が表示されたタイミングでロックを完全に解除
       state.isTransitioning = false;
       disableActionButtons(false);
     }
 
-    // 読みを表示する（＆音声読み上げ）
-    function showReading(forceSpeech = true) {
-      const readingEl = document.getElementById('reading-text');
-      readingEl.classList.remove('opacity-0');
-      state.isReadingShown = true;
+    // 分解カード（下部のピョコピョコ並ぶカード）を1枚追加するヘルパー関数
+    function appendDecompositionCardElement(item, index) {
+      const decompContainer = document.getElementById('decomposition-container');
+      
+      const card = document.createElement('div');
+      card.className = `flex flex-col items-center bg-white border-2 ${item.color} rounded-2xl p-2 px-4 shadow-md opacity-0 transform scale-75 border-b-4`;
+      card.innerHTML = `
+        <span class="text-2xl md:text-3xl font-extrabold tracking-tight">${item.label}</span>
+        <span class="text-xs md:text-sm font-bold text-gray-500 mt-1 bg-white bg-opacity-70 px-2 rounded-full">${item.reading}</span>
+      `;
+      
+      decompContainer.appendChild(card);
 
-      if (forceSpeech && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(state.currentNumber.toString());
-        utterance.lang = 'ja-JP';
-        utterance.rate = 1.0;
-        window.speechSynthesis.speak(utterance);
-      }
+      // ピョコッと登場
+      setSafeTimeout(() => {
+        card.classList.remove('opacity-0', 'scale-75');
+        card.classList.add('animate-pop-in');
+      }, 50);
     }
 
-    // 判定処理（◯または✖️）
-    function handleAnswer(isCorrect) {
-      if (state.isTransitioning) return; // 演出や遷移中の連続タップを徹底ブロック
+    // 【完全リファクタリング】桁ごとにマス目が分かれたガチャーンスロット合体アニメーション
+    function triggerSlotDecompositionAnimation(onCompleteCallback) {
+      const slotStage = document.getElementById('slot-stage');
+      const numTextEl = document.getElementById('number-text');
 
-      // ボタンを即座に一時ロック
+      // 通常表示の巨大数字を隠し、立体スロットステージを表示
+      numTextEl.classList.add('hidden');
+      slotStage.classList.remove('hidden');
+      slotStage.innerHTML = ''; // クリア
+
+      const num = state.currentNumber;
+      const numStr = num.toString();
+      const len = numStr.length;
+
+      // 1桁の場合は、スロット演出をせずそのまま表示する（またはシンプルな1マス）
+      if (len === 1) {
+        slotStage.style.width = '100px';
+        const card = document.createElement('div');
+        card.className = "w-24 h-36 flex items-center justify-center font-extrabold rounded-2xl border-2 border-b-8 shadow-lg bg-rose-500 border-rose-600 text-white text-7xl animate-drop-slot";
+        card.innerText = numStr;
+        slotStage.appendChild(card);
+        
+        setSafeTimeout(() => {
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(num.toString());
+            utterance.lang = 'ja-JP';
+            utterance.rate = 1.1;
+            window.speechSynthesis.speak(utterance);
+          }
+          appendDecompositionCardElement({label: num.toString(), reading: getReadingText(num), color: 'bg-rose-100 text-rose-800 border-rose-300'}, 0);
+          
+          setSafeTimeout(() => {
+            if (onCompleteCallback) onCompleteCallback();
+          }, 500);
+        }, 400);
+        return;
+      }
+
+      // 2桁以上の合体スロット設計（等幅のスロット枠）
+      const cellWidth = window.innerWidth < 640 ? 75 : 105; 
+      const cellHeight = window.innerWidth < 640 ? 110 : 155;
+      const gap = 8;
+      const totalWidth = cellWidth * len + gap * (len - 1);
+      
+      slotStage.style.width = `${totalWidth}px`;
+      slotStage.className = "relative h-40 md:h-52 flex justify-center items-center select-none mb-4 font-mono";
+
+      // 桁ごとの固定セル（台座となる枠）を配置
+      const cells = [];
+      for (let i = 0; i < len; i++) {
+        const cell = document.createElement('div');
+        cell.className = "relative flex items-center justify-center rounded-2xl bg-slate-50 border border-dashed border-slate-300";
+        cell.style.width = `${cellWidth}px`;
+        cell.style.height = `${cellHeight}px`;
+        slotStage.appendChild(cell);
+        cells.push(cell);
+      }
+
+      // --- ステップ1：ベースとなる数字カードの同時落下 ---
+      // 例:「15」なら [1](青) と [0](灰)
+      // 例:「106」なら [1](緑) と [0](灰) と [0](灰)
+      const baseDigits = [];
+      const highestDigitChar = numStr.charAt(0);
+      const highestDigitVal = parseInt(highestDigitChar);
+
+      let highestColorTheme = "";
+      let highestReading = "";
+      if (len === 3) {
+        highestColorTheme = "border-emerald-500 bg-white text-emerald-600"; 
+        highestReading = getReadingText(highestDigitVal * 100);
+      } else {
+        highestColorTheme = "border-sky-500 bg-white text-sky-600"; 
+        highestReading = getReadingText(highestDigitVal * 10);
+      }
+
+      // 最上位の左端をプッシュ
+      baseDigits.push({
+        digitIndex: 0,
+        char: highestDigitChar,
+        reading: highestReading,
+        colorTheme: highestColorTheme,
+        borderColor: len === 3 ? "border-emerald-400" : "border-sky-400",
+        decompItem: len === 3 ? {label: (highestDigitVal * 100).toString(), reading: highestReading, color: 'bg-emerald-100 text-emerald-800 border-emerald-300'} : {label: (highestDigitVal * 10).toString(), reading: highestReading, color: 'bg-sky-100 text-sky-800 border-sky-300'}
+      });
+
+      // それ以降の右側の桁はベースとして「0（グレー）」を同時に配置
+      for (let i = 1; i < len; i++) {
+        baseDigits.push({
+          digitIndex: i,
+          char: "0",
+          reading: "", // 最初のゼロは発音しない
+          colorTheme: "border-slate-300 bg-slate-100 text-slate-400", 
+          borderColor: "border-slate-300",
+          decompItem: null
+        });
+      }
+
+      // ベース数字の落下実行
+      baseDigits.forEach((digit) => {
+        const cell = cells[digit.digitIndex];
+        
+        const card = document.createElement('div');
+        card.className = `absolute inset-0 flex items-center justify-center font-black rounded-2xl border-2 border-b-8 shadow-md opacity-0 z-10`;
+        card.className += ` ${digit.colorTheme}`;
+        card.className += len >= 3 ? " text-5xl md:text-7xl" : " text-6xl md:text-8xl";
+        card.innerText = digit.char;
+
+        const ring = document.createElement('div');
+        ring.className = `absolute rounded-3xl border-4 opacity-0 pointer-events-none z-0`;
+        ring.style.width = "115%";
+        ring.style.height = "115%";
+        ring.className += ` ${digit.borderColor}`;
+
+        cell.appendChild(ring);
+        cell.appendChild(card);
+
+        // 即時アニメーション
+        card.classList.remove('opacity-0');
+        card.classList.add('animate-drop-slot');
+
+        setSafeTimeout(() => {
+          ring.classList.add('animate-shockwave');
+          if (digit.reading && 'speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(digit.reading);
+            utterance.lang = 'ja-JP';
+            utterance.rate = 1.1;
+            window.speechSynthesis.speak(utterance);
+          }
+          if (digit.decompItem) {
+            appendDecompositionCardElement(digit.decompItem, 0);
+          }
+        }, 400);
+      });
+
+      // --- ステップ2：右側の桁が順番に上から降ってきて重なる（0.7秒間隔） ---
+      // 値が「0」の桁は何も降らせない（ベースのグレー「0」が美しくそのまま残る！）
+      let currentStepDelay = 700;
+
+      for (let i = 1; i < len; i++) {
+        const char = numStr.charAt(i);
+        const val = parseInt(char);
+
+        // ゼロのときはスロットをスキップ（十の位などの「0」が消えずに残る）
+        if (val === 0) {
+          continue; 
+        }
+
+        const digitIndex = i;
+        const cell = cells[digitIndex];
+
+        let colorTheme = "";
+        let reading = "";
+        let borderColor = "";
+        let decompItem = null;
+
+        if (len === 3 && digitIndex === 1) {
+          // 3桁の十の位
+          colorTheme = "border-sky-500 bg-white text-sky-600";
+          reading = getReadingText(val * 10);
+          borderColor = "border-sky-400";
+          decompItem = {label: (val * 10).toString(), reading: reading, color: 'bg-sky-100 text-sky-800 border-sky-300'};
+        } else {
+          // 一の位
+          colorTheme = "border-rose-500 bg-white text-rose-600";
+          const oReadings = {1:'いち', 2:'に', 3:'さん', 4:'よん', 5:'ご', 6:'ろく', 7:'なな', 8:'はち', 9:'きゅう'};
+          reading = oReadings[val];
+          borderColor = "border-rose-400";
+          decompItem = {label: val.toString(), reading: reading, color: 'bg-rose-100 text-rose-800 border-rose-300'};
+        }
+
+        const stepIdx = i;
+
+        setSafeTimeout(() => {
+          // 上から降らせる不透明なカード (z-indexを上げて下のグレーの0を完全に物理遮断して隠す)
+          const overCard = document.createElement('div');
+          overCard.className = `absolute inset-0 flex items-center justify-center font-black rounded-2xl border-2 border-b-8 shadow-md opacity-0 z-20`;
+          overCard.className += ` ${colorTheme}`;
+          overCard.className += len >= 3 ? " text-5xl md:text-7xl" : " text-6xl md:text-8xl";
+          overCard.innerText = char;
+
+          const ring = document.createElement('div');
+          ring.className = `absolute rounded-3xl border-4 opacity-0 pointer-events-none z-10`;
+          ring.style.width = "115%";
+          ring.style.height = "115%";
+          ring.className += ` ${borderColor}`;
+
+          cell.appendChild(ring);
+          cell.appendChild(overCard);
+
+          overCard.classList.remove('opacity-0');
+          overCard.classList.add('animate-drop-slot');
+
+          setSafeTimeout(() => {
+            ring.classList.add('animate-shockwave');
+            
+            if ('speechSynthesis' in window) {
+              window.speechSynthesis.cancel();
+              const utterance = new SpeechSynthesisUtterance(reading);
+              utterance.lang = 'ja-JP';
+              utterance.rate = 1.1;
+              window.speechSynthesis.speak(utterance);
+            }
+
+            if (decompItem) {
+              appendDecompositionCardElement(decompItem, stepIdx);
+            }
+          }, 400);
+
+        }, currentStepDelay);
+
+        currentStepDelay += 700;
+      }
+
+      const totalWait = currentStepDelay + 400;
+
+      setSafeTimeout(() => {
+        slotStage.classList.add('scale-105');
+        setSafeTimeout(() => {
+          slotStage.classList.remove('scale-105');
+        }, 150);
+
+        if (onCompleteCallback) onCompleteCallback();
+      }, totalWait);
+    }
+
+    // メイン解説表示の実行（よみ表示＆ガッチャンコスロットのトリガー）
+    function showReading(forceSpeech = true) {
+      if (state.isReadingShown) return;
+      state.isReadingShown = true;
+
+      const readingEl = document.getElementById('reading-text');
+
+      // 1. スロット合体アニメーションを実行
+      triggerSlotDecompositionAnimation(() => {
+        // 全体の合体が終わったら
+        
+        // ① 全体よみテキスト（ひらがな）を表示
+        readingEl.classList.remove('opacity-0');
+
+        // ② 最後にやさしく全体を読み上げ（「じゅうご」「ひゃくろく」）
+        if (forceSpeech && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(state.currentNumber.toString());
+          utterance.lang = 'ja-JP';
+          utterance.rate = 0.95; 
+          window.speechSynthesis.speak(utterance);
+        }
+      });
+    }
+
+    // 「よみ・こたえ」ボタンが押されたとき
+    function handleShowReadingButton() {
+      if (state.isTransitioning || state.isAwaitingManualConfirm) return;
+
+      state.firstInputIsCorrect = false; 
+      showReading(true);
+
+      // 演出が動いている間は完全ロック
       state.isTransitioning = true;
       disableActionButtons(true);
 
-      if (!isCorrect) {
-        // 間違い（✖️）を押した時：数字はそのままに、間を持ってから正解を自動解説する
-        // 1. 1.0秒の「間（ま）」を置いておさらいする
-        setSafeTimeout(() => {
-          // 2. 正解のよみを自動表示＆読み上げ
-          showReading(true);
+      const numStr = state.currentNumber.toString();
+      const len = numStr.length;
+      
+      // 合計アニメーション待機時間を計算（一桁なら短く）
+      let nonZeroCount = 0;
+      for (let i = 1; i < len; i++) {
+        if (parseInt(numStr.charAt(i)) > 0) nonZeroCount++;
+      }
+      const totalWait = len === 1 ? 1000 : (nonZeroCount * 700 + 1300);
 
-          // 3. お子様が理解する時間を1.8秒とってから次に進む
+      setSafeTimeout(() => {
+        state.isTransitioning = false;
+        disableActionButtons(false);
+        
+        state.isAwaitingManualConfirm = true;
+        updateProgressUI();
+
+        document.getElementById('label-wrong').innerText = "つぎへ進む";
+        document.getElementById('label-correct').innerText = "つぎへ進む";
+      }, totalWait);
+    }
+
+    // 判定ボタン（◯または✖️）
+    function handleAnswer(isCorrect) {
+      if (state.isTransitioning) return;
+
+      if (!state.isAwaitingManualConfirm) {
+        if (isCorrect) {
+          proceedToNext(true); 
+        } else {
+          state.isTransitioning = true;
+          disableActionButtons(true);
+
           setSafeTimeout(() => {
-            // ここではロック解除せずそのまま遷移関数を呼ぶ（ロック解除はnextQuestionで行う）
-            proceedToNext(false);
-          }, 1800);
-        }, 1000);
+            showReading(true);
 
+            const numStr = state.currentNumber.toString();
+            const len = numStr.length;
+            let nonZeroCount = 0;
+            for (let i = 1; i < len; i++) {
+              if (parseInt(numStr.charAt(i)) > 0) nonZeroCount++;
+            }
+            const totalWait = len === 1 ? 1000 : (nonZeroCount * 700 + 1300);
+
+            setSafeTimeout(() => {
+              state.isTransitioning = false;
+              disableActionButtons(false);
+              
+              state.isAwaitingManualConfirm = true;
+              state.firstInputIsCorrect = false; 
+              
+              updateProgressUI(); 
+
+              document.getElementById('label-wrong').innerText = "つぎへ進む";
+              document.getElementById('label-correct').innerText = "つぎへ進む";
+            }, totalWait);
+          }, 1000);
+        }
       } else {
-        // 合っていた（◯）時はすぐに次へ
-        proceedToNext(true);
+        state.isAwaitingManualConfirm = false;
+        proceedToNext(state.firstInputIsCorrect);
       }
     }
 
-    // 実際のスコア処理と次の問題への遷移
+    // 次の問題への進行処理
     function proceedToNext(isCorrect) {
       if (!state.isReviewMode) {
-        // --- 通常モードの判定 ---
         if (isCorrect) {
           state.firstTryCorrectCount++;
         } else {
           state.totalWrongCount++;
-          // 間違えた数字を記録（重複なし）
           if (!state.wrongNumbers.includes(state.currentNumber)) {
             state.wrongNumbers.push(state.currentNumber);
           }
@@ -534,19 +994,15 @@
         if (state.currentIndex < 12) {
           nextQuestion();
         } else {
-          // 12問全て終了時
           if (state.wrongNumbers.length === 0) {
-            // 全問正解ならそのままクリア（結果表示の前にロック解除）
             state.isTransitioning = false;
             disableActionButtons(false);
             showResults();
           } else {
-            // 間違いがあったら、1周だけおさらいへ進む
             startReviewMode();
           }
         }
       } else {
-        // --- おさらいモードの判定（1周限定） ---
         if (isCorrect) {
           state.reviewCorrectCount++;
         } else {
@@ -558,7 +1014,6 @@
         if (state.reviewIndex < state.reviewQuestions.length) {
           nextQuestion();
         } else {
-          // おさらいの1周が終了したら即終了
           state.isTransitioning = false;
           disableActionButtons(false);
           showResults();
@@ -566,43 +1021,37 @@
       }
     }
 
-    // おさらいモードの開始 (1周限定)
+    // おさらいモードの開始
     function startReviewMode() {
       state.isReviewMode = true;
-      // 間違えた数字をシャッフル
       state.reviewQuestions = shuffleArray(state.wrongNumbers);
       state.reviewIndex = 0;
       
-      // おさらい移行までの1秒のウェイト時間も、ボタン入力を完全にロックしたままにする
       state.isTransitioning = true;
       disableActionButtons(true);
       
       showToast(`🔄 まちがえた ${state.reviewQuestions.length}もん の おさらいいくよ！`);
       
       setSafeTimeout(() => {
-        nextQuestion(); // ここでおさらいの数字が出ると同時に、nextQuestion内の処理で安全にロック解除
+        nextQuestion();
       }, 1000);
     }
 
     // 結果表示
     function showResults() {
-      // 1発目の正解数
       document.getElementById('result-perfect').innerText = `${state.firstTryCorrectCount} / 12`;
       
-      // おさらいの正解数
       const learnedEl = document.getElementById('result-learned');
       if (state.wrongNumbers.length > 0) {
         learnedEl.innerText = `${state.reviewCorrectCount} / ${state.wrongNumbers.length}`;
         learnedEl.parentElement.classList.remove('hidden');
       } else {
-        // 1発全問正解だった場合
         learnedEl.innerText = "なし (パーフェクト！💮)";
       }
       
       document.getElementById('result-screen').classList.remove('hidden');
     }
 
-    // トースト通知を表示
     function showToast(message) {
       const toast = document.getElementById('toast');
       toast.innerText = message;
