@@ -28,7 +28,7 @@
       animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     }
 
-    /* ガチャーンと上から降ってくるアニメーション */
+    /* ガチャーンと上から降ってくるアニメーション (0.45s から 0.8s へゆったり化) */
     @keyframes dropSlot {
       0% { transform: translateY(-250px) scaleY(1.4); opacity: 0; }
       55% { transform: translateY(15px) scaleY(0.85); opacity: 1; }
@@ -36,7 +36,7 @@
       100% { transform: translateY(0) scaleY(1); opacity: 1; }
     }
     .animate-drop-slot {
-      animation: dropSlot 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+      animation: dropSlot 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
     }
 
     /* ガチャーンの瞬間の衝撃波リング */
@@ -458,6 +458,7 @@
       startGame();
     }
 
+    // ゲーム終了（スタート画面に戻る）
     function exitGame() {
       clearAllTimers();
       state.isTransitioning = false;
@@ -684,8 +685,8 @@
           
           setSafeTimeout(() => {
             if (onCompleteCallback) onCompleteCallback();
-          }, 500);
-        }, 400);
+          }, 800); // 1桁でも少し余韻を持たせる
+        }, 700); // 落下所要時間(0.8s)に合わせた着地タイミング
         return;
       }
 
@@ -710,8 +711,6 @@
       }
 
       // --- ステップ1：ベースとなる数字カードの同時落下 ---
-      // 例:「15」なら [1](青) と [0](灰)
-      // 例:「106」なら [1](緑) と [0](灰) と [0](灰)
       const baseDigits = [];
       const highestDigitChar = numStr.charAt(0);
       const highestDigitVal = parseInt(highestDigitChar);
@@ -749,6 +748,7 @@
       }
 
       // ベース数字の落下実行
+      const activeBaseCards = []; // 最後の色替え参照用にカードとリングのDOMを保存
       baseDigits.forEach((digit) => {
         const cell = cells[digit.digitIndex];
         
@@ -767,6 +767,9 @@
         cell.appendChild(ring);
         cell.appendChild(card);
 
+        // 状態保存
+        activeBaseCards[digit.digitIndex] = { card, ring };
+
         // 即時アニメーション
         card.classList.remove('opacity-0');
         card.classList.add('animate-drop-slot');
@@ -783,12 +786,12 @@
           if (digit.decompItem) {
             appendDecompositionCardElement(digit.decompItem, 0);
           }
-        }, 400);
+        }, 400); // 落下時間約0.8sのうち、バウンド手前の400msで着地アクションを合わせる
       });
 
-      // --- ステップ2：右側の桁が順番に上から降ってきて重なる（0.7秒間隔） ---
+      // --- ステップ2：右側の桁が順番に上から降ってきて重なる（間隔を0.7秒から1.5秒へゆったり化） ---
       // 値が「0」の桁は何も降らせない（ベースのグレー「0」が美しくそのまま残る！）
-      let currentStepDelay = 700;
+      let currentStepDelay = 1500;
 
       for (let i = 1; i < len; i++) {
         const char = numStr.charAt(i);
@@ -858,17 +861,58 @@
             if (decompItem) {
               appendDecompositionCardElement(decompItem, stepIdx);
             }
-          }, 400);
+          }, 400); // 落下演出に合わせた着地
 
         }, currentStepDelay);
 
-        currentStepDelay += 700;
+        currentStepDelay += 1500; // 次のステップ開始まで余裕たっぷり1.5秒の間を空ける
       }
 
-      const totalWait = currentStepDelay + 400;
+      const totalWait = currentStepDelay + 500; // すべてが着地し終わったあと、余韻を置いてからお祝い合体へ
 
+      // --- ステップ3：全体の落下完了＆合体おめでとうの変身演出 ---
       setSafeTimeout(() => {
+        // ① カードステージをバウンド（誇張）させる
         slotStage.classList.add('scale-105');
+
+        // ② 残っているグレーの「0」を、その桁の鮮やかなアクティブカラーへ変身！
+        for (let i = 1; i < len; i++) {
+          const char = numStr.charAt(i);
+          if (parseInt(char) === 0) {
+            const baseElements = activeBaseCards[i];
+            if (baseElements) {
+              const card = baseElements.card;
+              const ring = baseElements.ring;
+
+              // グレーのスタイルを取り除く
+              card.classList.remove('border-slate-300', 'bg-slate-100', 'text-slate-400');
+              
+              // 桁本来の色へスムーズに変身
+              let activeColorTheme = "";
+              let activeRingColor = "";
+              if (len === 3 && i === 1) {
+                // 3桁の十の位 ➔ スカイ（水色）
+                activeColorTheme = "border-sky-500 bg-white text-sky-600";
+                activeRingColor = "border-sky-400";
+              } else {
+                // 2桁の1の位、または3桁の1の位 ➔ ローズ（赤色）
+                activeColorTheme = "border-rose-500 bg-white text-rose-600";
+                activeRingColor = "border-rose-400";
+              }
+              
+              card.className += ` ${activeColorTheme} transition-colors duration-300`;
+
+              // 衝撃波リングの色もチェンジして、最後にもう一度シュワッと弾けさせる
+              if (ring) {
+                ring.classList.remove('border-slate-300', 'animate-shockwave');
+                ring.className += ` ${activeRingColor}`;
+                void ring.offsetWidth; // リフローを発生させてアニメーションを再実行
+                ring.classList.add('animate-shockwave');
+              }
+            }
+          }
+        }
+
         setSafeTimeout(() => {
           slotStage.classList.remove('scale-105');
         }, 150);
@@ -921,7 +965,8 @@
       for (let i = 1; i < len; i++) {
         if (parseInt(numStr.charAt(i)) > 0) nonZeroCount++;
       }
-      const totalWait = len === 1 ? 1000 : (nonZeroCount * 700 + 1300);
+      // スローテンポ化(1.5秒間隔)に合わせてロック待機秒数も調整
+      const totalWait = len === 1 ? 1500 : (nonZeroCount * 1500 + 3000);
 
       setSafeTimeout(() => {
         state.isTransitioning = false;
@@ -955,7 +1000,8 @@
             for (let i = 1; i < len; i++) {
               if (parseInt(numStr.charAt(i)) > 0) nonZeroCount++;
             }
-            const totalWait = len === 1 ? 1000 : (nonZeroCount * 700 + 1300);
+            // スローテンポ化(1.5秒間隔)に合わせてロック待機秒数も調整
+            const totalWait = len === 1 ? 1500 : (nonZeroCount * 1500 + 3000);
 
             setSafeTimeout(() => {
               state.isTransitioning = false;
