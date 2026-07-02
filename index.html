@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>数字おぼえゲーム</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* スマホでの誤タップやズームを防ぐスタイル */
+    body {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* 回転用のクラス（スムーズなアニメーション付き） */
+    .rotate-180 {
+      transform: rotate(180deg);
+    }
+  </style>
+</head>
+<body class="bg-slate-100 font-sans min-h-screen flex flex-col justify-between overflow-hidden select-none">
+
+  <!-- 1. スタート画面 -->
+  <div id="start-screen" class="flex-1 flex flex-col justify-center items-center p-6 bg-gradient-to-br from-indigo-50 to-blue-100">
+    <div class="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center border-4 border-blue-400">
+      <div class="text-6xl mb-4 text-blue-500">
+        <i class="fa-solid fa-graduation-cap"></i>
+      </div>
+      <h1 class="text-3xl font-extrabold text-gray-800 mb-6">すうじ おぼえ</h1>
+      
+      <!-- 範囲設定 -->
+      <div class="mb-6 text-left">
+        <label class="block text-gray-700 font-bold mb-2 text-sm">🔢 だす数字の はんい</label>
+        
+        <!-- クイック選択 -->
+        <div class="grid grid-cols-3 gap-2 mb-4">
+          <button onclick="setRange(1, 10)" class="bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-2 px-3 rounded-xl text-sm transition-colors">1 〜 10</button>
+          <button onclick="setRange(1, 20)" class="bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-2 px-3 rounded-xl text-sm transition-colors">1 〜 20</button>
+          <button onclick="setRange(10, 99)" class="bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-2 px-3 rounded-xl text-sm transition-colors">10 〜 99</button>
+        </div>
+
+        <!-- 直接入力 -->
+        <div class="flex items-center space-x-2 bg-gray-50 p-3 rounded-xl border border-gray-200">
+          <input type="number" id="min-val" value="1" min="0" class="w-20 bg-white border border-gray-300 rounded-lg p-2 text-center text-lg font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          <span class="text-gray-500 font-bold">〜</span>
+          <input type="number" id="max-val" value="10" min="1" class="w-20 bg-white border border-gray-300 rounded-lg p-2 text-center text-lg font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        </div>
+      </div>
+
+      <!-- 反転設定（向かい合わせ用 - 初期状態OFF） -->
+      <div class="mb-8 p-4 bg-yellow-50 rounded-2xl border border-yellow-200 text-left">
+        <label class="flex items-center justify-between cursor-pointer">
+          <div>
+            <span class="block text-sm font-bold text-gray-800">🔄 むかいあわせモード</span>
+            <span class="block text-xs text-gray-500 mt-0.5">ONにすると親用ボタンが反転し、向かい側（奥）から操作しやすくなります。</span>
+          </div>
+          <div class="relative">
+            <input type="checkbox" id="flip-mode" class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+          </div>
+        </label>
+      </div>
+
+      <!-- スタートボタン -->
+      <button onclick="startGame()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold py-4 px-6 rounded-2xl text-2xl shadow-lg transform active:scale-95 transition-all">
+        スタート！
+      </button>
+    </div>
+  </div>
+
+  <!-- 2. メインゲーム画面 (最初は非表示) -->
+  <div id="game-screen" class="hidden flex-1 flex flex-col justify-between p-4 pb-8 select-none">
+    
+    <!-- 親御さん用コントロールエリア（画面上部） -->
+    <div id="control-panel" class="bg-white rounded-2xl shadow-md p-4 border border-gray-200 transition-transform duration-300">
+      <div class="flex justify-between items-center mb-3">
+        <!-- 戻るボタン -->
+        <button onclick="exitGame()" class="text-gray-500 hover:text-gray-700 font-semibold text-sm bg-gray-100 hover:bg-gray-200 py-1.5 px-3 rounded-lg flex items-center gap-1">
+          <i class="fa-solid fa-arrow-left"></i> おわる
+        </button>
+        <!-- 正解カウンター -->
+        <div class="text-sm font-bold text-gray-600 flex gap-3">
+          <span class="text-emerald-600"><i class="fa-solid fa-circle-check"></i> <span id="score-correct">0</span></span>
+          <span class="text-rose-500"><i class="fa-solid fa-circle-xmark"></i> <span id="score-wrong">0</span></span>
+        </div>
+        <!-- 向き切り替えの簡易スイッチ -->
+        <button onclick="toggleFlip()" class="text-gray-500 hover:text-gray-700 text-sm bg-gray-100 hover:bg-gray-200 p-1.5 rounded-lg" title="親用ボタンの向きを反転">
+          <i class="fa-solid fa-arrows-rotate"></i> 反転
+        </button>
+      </div>
+
+      <!-- 親御さんの判定ボタン群 -->
+      <div class="grid grid-cols-3 gap-3">
+        <!-- ✖️ボタン -->
+        <button onclick="handleAnswer(false)" class="bg-rose-500 hover:bg-rose-600 text-white py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
+          <span class="text-3xl font-extrabold">✖</span>
+          <span class="text-[10px] font-bold">ちがう（つぎへ）</span>
+        </button>
+
+        <!-- 読み上げ・答えボタン -->
+        <button onclick="showReading()" class="bg-amber-400 hover:bg-amber-500 text-amber-950 py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
+          <span class="text-2xl"><i class="fa-solid fa-volume-high"></i></span>
+          <span class="text-xs font-bold">よみ・こたえ</span>
+        </button>
+
+        <!-- ◯ボタン -->
+        <button onclick="handleAnswer(true)" class="bg-emerald-500 hover:bg-emerald-600 text-white py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
+          <span class="text-3xl font-extrabold">◯</span>
+          <span class="text-[10px] font-bold">あってる（つぎへ）</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- お子様用メイン表示エリア（画面中央〜下部） -->
+    <div class="flex-1 flex flex-col justify-center items-center my-4">
+      <div id="target-display" class="flex flex-col justify-center items-center transition-all duration-300">
+        <!-- 巨大な数字 -->
+        <div id="number-text" class="text-[10rem] md:text-[14rem] font-extrabold text-slate-800 leading-none tracking-tight select-none">
+          0
+        </div>
+        
+        <!-- 読み方 (最初は透明/非表示) -->
+        <div id="reading-text" class="h-16 text-3xl md:text-4xl font-bold text-blue-600 mt-4 opacity-0 transition-opacity duration-200 select-none bg-blue-50 px-6 py-2 rounded-full border border-blue-100">
+          よみかた
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 効果音代わりの簡易トースト通知用コンテナ -->
+  <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full text-lg font-bold shadow-2xl opacity-0 transition-opacity duration-300 pointer-events-none z-50">
+    メッセージ
+  </div>
+
+  <script>
+    // 状態管理
+    let config = {
+      min: 1,
+      max: 10,
+      isFlipped: false // 初期状態はOFF（同じ向き）
+    };
+
+    let state = {
+      currentNumber: 0,
+      correctCount: 0,
+      wrongCount: 0,
+      isReadingShown: false
+    };
+
+    // 数字の「よみ」マッピング
+    function getReadingText(num) {
+      const readings = {
+        0: 'れい', 1: 'いち', 2: 'に', 3: 'さん', 4: 'よん',
+        5: 'ご', 6: 'ろく', 7: 'なな', 8: 'はち', 9: 'きゅう', 10: 'じゅう'
+      };
+
+      if (readings[num]) return readings[num];
+
+      if (num > 10 && num < 100) {
+        let ten = Math.floor(num / 10);
+        let one = num % 10;
+        let tenStr = ten === 1 ? 'じゅう' : readings[ten] + 'じゅう';
+        let oneStr = one === 0 ? '' : readings[one];
+        return tenStr + oneStr;
+      }
+
+      return num.toString();
+    }
+
+    // クイック範囲設定ボタン用
+    function setRange(min, max) {
+      document.getElementById('min-val').value = min;
+      document.getElementById('max-val').value = max;
+    }
+
+    // 反転表示の切り替え
+    function toggleFlip() {
+      config.isFlipped = !config.isFlipped;
+      applyFlip();
+      showToast(config.isFlipped ? "🔄 むかいあわせ（親：奥、子：手前）" : "🔄 おなじむき（全員手前向き）");
+    }
+
+    // 画面のパーツに回転クラスを適用
+    function applyFlip() {
+      const controlPanel = document.getElementById('control-panel');
+      const display = document.getElementById('target-display');
+      
+      if (config.isFlipped) {
+        // むかいあわせモード：ボタンを180度回転（奥の親用）、数字は0度（手前の子供用）
+        controlPanel.classList.add('rotate-180');
+        display.classList.remove('rotate-180');
+      } else {
+        // 通常モード：どちらも0度（全員手前向き）
+        controlPanel.classList.remove('rotate-180');
+        display.classList.remove('rotate-180');
+      }
+    }
+
+    // ゲーム開始
+    function startGame() {
+      const minInput = parseInt(document.getElementById('min-val').value);
+      const maxInput = parseInt(document.getElementById('max-val').value);
+
+      if (isNaN(minInput) || isNaN(maxInput) || minInput > maxInput) {
+        showToast("⚠️ はんいを 正しくいれてね");
+        return;
+      }
+
+      config.min = minInput;
+      config.max = maxInput;
+      config.isFlipped = document.getElementById('flip-mode').checked;
+
+      // カウンターリセット
+      state.correctCount = 0;
+      state.wrongCount = 0;
+      updateScoreboard();
+
+      // 画面の切り替え
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.remove('hidden');
+
+      applyFlip();
+      nextQuestion();
+    }
+
+    // ゲーム終了（スタート画面に戻る）
+    function exitGame() {
+      document.getElementById('game-screen').classList.add('hidden');
+      document.getElementById('start-screen').classList.remove('hidden');
+    }
+
+    // 次の数字を出す
+    function nextQuestion() {
+      state.isReadingShown = false;
+      
+      // 読み表示を隠す
+      const readingEl = document.getElementById('reading-text');
+      readingEl.classList.add('opacity-0');
+
+      // ランダムに数字を決定
+      const range = config.max - config.min + 1;
+      let nextNum = Math.floor(Math.random() * range) + config.min;
+
+      if (range > 1 && nextNum === state.currentNumber) {
+        nextNum = Math.floor(Math.random() * range) + config.min;
+      }
+
+      state.currentNumber = nextNum;
+      
+      // 画面反映
+      document.getElementById('number-text').innerText = state.currentNumber;
+      readingEl.innerText = getReadingText(state.currentNumber);
+    }
+
+    // 読みを表示する（＆音声読み上げ）
+    function showReading() {
+      const readingEl = document.getElementById('reading-text');
+      readingEl.classList.remove('opacity-0');
+      state.isReadingShown = true;
+
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(state.currentNumber.toString());
+        utterance.lang = 'ja-JP';
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    // 判定ボタン（◯または✖️）
+    function handleAnswer(isCorrect) {
+      if (isCorrect) {
+        state.correctCount++;
+      } else {
+        state.wrongCount++;
+      }
+      updateScoreboard();
+      nextQuestion();
+    }
+
+    // スコアボードの更新
+    function updateScoreboard() {
+      document.getElementById('score-correct').innerText = state.correctCount;
+      document.getElementById('score-wrong').innerText = state.wrongCount;
+    }
+
+    // トースト通知を表示
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.innerText = message;
+      toast.classList.remove('opacity-0');
+      
+      setTimeout(() => {
+        toast.classList.add('opacity-0');
+      }, 1500);
+    }
+  </script>
+</body>
+</html>
