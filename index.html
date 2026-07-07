@@ -121,30 +121,30 @@
           もんだい: 1 / 12
         </div>
         
-        <!-- 向き切り替えの簡易スイッチ -->
+        <!-- 向き切り替え of 簡易スイッチ -->
         <button onclick="toggleFlip()" class="text-gray-500 hover:text-gray-700 text-sm bg-gray-100 hover:bg-gray-200 p-1.5 rounded-lg" title="親用ボタンの向きを反転">
           <i class="fa-solid fa-arrows-rotate"></i> 反転
         </button>
       </div>
 
-      <!-- 親御さんの判定ボタン群 -->
-      <div class="grid grid-cols-3 gap-3" id="action-buttons">
-        <!-- ✖️ボタン -->
+      <!-- 親御さんの判定ボタン群 【比率を9:2:9に変更】 -->
+      <div class="grid grid-cols-[9fr_2fr_9fr] gap-3" id="action-buttons">
+        <!-- ✖️ボタン (幅を拡大、アイコンサイズアップ) -->
         <button onclick="handleAnswer(false)" class="bg-rose-500 hover:bg-rose-600 text-white py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
-          <span class="text-3xl font-extrabold">✖</span>
-          <span class="text-[10px] font-bold" id="label-wrong">ちがう</span>
+          <span class="text-4xl font-extrabold leading-none">✖</span>
+          <span class="text-xs font-bold" id="label-wrong">ちがう</span>
         </button>
 
-        <!-- 読み上げ・答えボタン -->
-        <button onclick="handleShowReadingButton()" class="bg-amber-400 hover:bg-amber-500 text-amber-950 py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
-          <span class="text-2xl"><i class="fa-solid fa-volume-high"></i></span>
-          <span class="text-xs font-bold">よみ・こたえ</span>
+        <!-- 読み上げ・答えボタン (幅を1/4程度に縮小、中身をスリムに最適化) -->
+        <button onclick="handleShowReadingButton()" class="bg-amber-400 hover:bg-amber-500 text-amber-950 py-3 px-1 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all shadow-md overflow-hidden">
+          <span class="text-xl leading-none"><i class="fa-solid fa-volume-high"></i></span>
+          <span class="text-[9px] font-bold tracking-tighter whitespace-nowrap">よみ・こたえ</span>
         </button>
 
-        <!-- ◯ボタン -->
+        <!-- ◯ボタン (幅を拡大、アイコンサイズアップ) -->
         <button onclick="handleAnswer(true)" class="bg-emerald-500 hover:bg-emerald-600 text-white py-3 px-2 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all shadow-md">
-          <span class="text-3xl font-extrabold">◯</span>
-          <span class="text-[10px] font-bold" id="label-correct">あってる</span>
+          <span class="text-4xl font-extrabold leading-none">◯</span>
+          <span class="text-xs font-bold" id="label-correct">あってる</span>
         </button>
       </div>
     </div>
@@ -227,7 +227,7 @@
     // ==========================================
     // アプリケーション設定 (ここから変更可能です)
     // ==========================================
-    const APP_VERSION = "1.07"; // コード変更ごとに0.01追加
+    const APP_VERSION = "1.08"; // コード変更ごとに0.01追加
 
     // 状態管理
     let config = {
@@ -468,7 +468,6 @@
       startGame();
     }
 
-    // ゲーム終了（スタート画面に戻る）
     function exitGame() {
       clearAllTimers();
       state.isTransitioning = false;
@@ -829,7 +828,7 @@
         } else {
           // 一の位
           colorTheme = "border-rose-500 bg-white text-rose-600";
-          const oReadings = {1:'いち', 2:'に', 3:'さん', 4:'よん', 5:'ご', 6:'ろく', 7:'なな', 8:'はち', 9:'きゅう'};
+          const oReadings = {1:'ichi', 2:'ni', 3:'san', 4:'yon', 5:'go', 6:'roku', 7:'nana', 8:'hachi', 9:'kyuu'};
           reading = oReadings[val];
           borderColor = "border-rose-400";
           decompItem = {label: val.toString(), reading: reading, color: 'bg-rose-100 text-rose-800 border-rose-300'};
