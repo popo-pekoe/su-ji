@@ -39,7 +39,7 @@
       animation: dropSlot 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
     }
 
-    /* ガチャーンの瞬間の衝撃波リング */
+    /* 衝撃波リング */
     @keyframes shockwave {
       0% { transform: scale(0.7); opacity: 1; border-width: 8px; }
       100% { transform: scale(1.5); opacity: 0; border-width: 1px; }
@@ -47,13 +47,41 @@
     .animate-shockwave {
       animation: shockwave 0.4s ease-out forwards;
     }
+
+    /* フォーカス中の強力な強調アニメーション */
+    @keyframes focusPulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+      50% { transform: scale(1.12); box-shadow: 0 0 20px 8px rgba(245, 158, 11, 0.9); }
+      100% { transform: scale(1.08); box-shadow: 0 0 12px 4px rgba(245, 158, 11, 0.6); }
+    }
+    .active-focus-num {
+      animation: focusPulse 0.3s ease-out forwards;
+      background-color: #fef08a !important; /* 黄色背景 */
+      border-color: #f59e0b !important;
+      color: #78350f !important;
+      z-index: 30;
+    }
+
+    @keyframes focusPulseLabel {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1.1); }
+    }
+    .active-focus-label {
+      animation: focusPulseLabel 0.3s ease-out forwards;
+      background-color: #fbcfe8 !important; /* ピンク背景 */
+      color: #9d174d !important;
+      border-color: #f43f5e !important;
+      font-weight: 900 !important;
+      z-index: 30;
+    }
   </style>
 </head>
 <body class="bg-slate-100 font-sans min-h-screen flex flex-col justify-between overflow-hidden select-none">
 
   <!-- 1. スタート画面 -->
-  <div id="start-screen" class="flex-1 flex flex-col justify-center items-center p-6 bg-gradient-to-br from-indigo-50 to-blue-100">
-    <div class="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center border-4 border-blue-400 relative">
+  <div id="start-screen" class="flex-1 flex flex-col justify-center items-center p-6 bg-gradient-to-br from-indigo-50 to-blue-100 overflow-y-auto">
+    <div class="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center border-4 border-blue-400 relative my-auto">
       <div class="text-6xl mb-4 text-blue-500 animate-bounce">
         <i class="fa-solid fa-graduation-cap"></i>
       </div>
@@ -80,7 +108,7 @@
       </div>
 
       <!-- 反転設定（向かい合わせ用 - 初期状態OFF） -->
-      <div class="mb-8 p-4 bg-yellow-50 rounded-2xl border border-yellow-200 text-left">
+      <div class="mb-6 p-4 bg-yellow-50 rounded-2xl border border-yellow-200 text-left">
         <label class="flex items-center justify-between cursor-pointer">
           <div>
             <span class="block text-sm font-bold text-gray-800">🔄 むかいあわせモード</span>
@@ -94,8 +122,13 @@
       </div>
 
       <!-- スタートボタン -->
-      <button onclick="startGame()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold py-4 px-6 rounded-2xl text-2xl shadow-lg transform active:scale-95 transition-all">
+      <button onclick="startGame()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold py-4 px-6 rounded-2xl text-2xl shadow-lg transform active:scale-95 transition-all mb-4">
         スタート！
+      </button>
+
+      <!-- プロトタイプ体験ボタン -->
+      <button onclick="openPrototypePage()" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-extrabold py-3 px-4 rounded-2xl text-base shadow-md transform active:scale-95 transition-all flex items-center justify-center gap-2">
+        <span>🧪 案Bプロトタイプ（位のお部屋）</span>
       </button>
 
       <!-- バージョン表示 -->
@@ -154,7 +187,6 @@
       
       <!-- 背景にいっぱい散りばめられる同じ数字 of different fonts -->
       <div id="bg-numbers-container" class="absolute inset-0 pointer-events-none select-none overflow-hidden transition-all duration-300">
-        <!-- JavaScriptでフォント違いの数字を動的生成 -->
       </div>
 
       <!-- 手前を向いているメイン表示エリア -->
@@ -162,17 +194,15 @@
         
         <!-- 立体スロット合体ステージ -->
         <div id="slot-stage" class="hidden relative h-40 md:h-52 flex justify-center items-center select-none mb-4 font-mono">
-          <!-- ここに JavaScript でリール枠と落下カードが動的に生成されます -->
         </div>
 
-        <!-- 巨大な数字（通常時の問題表示） -->
+        <!-- 巨大な数字 -->
         <div id="number-text" class="text-[9rem] md:text-[13rem] font-extrabold text-slate-800 leading-none tracking-tight select-none drop-shadow-md transition-transform duration-300 flex justify-center items-center">
           0
         </div>
         
         <!-- 10の位・100の位 桁分解パズルブロック表示エリア -->
         <div id="decomposition-container" class="flex flex-wrap gap-3 mt-4 justify-center items-center w-full max-w-md px-4 min-h-[110px]">
-          <!-- ここに JavaScript で [100] [20] [5] などのカードが動的に生成されます -->
         </div>
 
         <!-- 読み方 -->
@@ -184,17 +214,100 @@
 
   </div>
 
-  <!-- 3. 結果発表画面 -->
+  <!-- 3. プロトタイプ体験専用画面（案B集中検証） -->
+  <div id="proto-screen" class="hidden flex-1 flex flex-col justify-between p-4 bg-slate-100 select-none overflow-y-auto">
+    <!-- 上部ヘッダーコントロール -->
+    <div class="bg-white rounded-2xl shadow-md p-4 border border-purple-200 mb-4">
+      <div class="flex justify-between items-center mb-3">
+        <button onclick="exitPrototypePage()" class="text-gray-600 hover:text-gray-800 font-bold text-sm bg-gray-100 hover:bg-gray-200 py-1.5 px-3 rounded-lg flex items-center gap-1">
+          <i class="fa-solid fa-arrow-left"></i> もどる
+        </button>
+        <span class="text-xs font-black px-3 py-1 bg-purple-100 text-purple-800 rounded-full border border-purple-200">
+          🧪 案B: 位のお部屋（万の位・フォーカス読み）
+        </span>
+      </div>
+
+      <!-- 桁ごとのドロップダウン入力＆ポップアップ付きランダム機能 -->
+      <div class="flex flex-col gap-3 bg-purple-50 p-3.5 rounded-2xl border border-purple-100">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-purple-900">🔢 5桁の数字をつくる:</span>
+          
+          <!-- ランダムポップアップ切り替えボタン -->
+          <div class="relative">
+            <button onclick="toggleRandomMenu()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs shadow transition-all flex items-center gap-1">
+              <i class="fa-solid fa-shuffle"></i> ランダム指定 <i class="fa-solid fa-caret-down text-[10px]"></i>
+            </button>
+            
+            <!-- 1〜5桁ランダム選択メニュー -->
+            <div id="random-menu" class="hidden absolute right-0 mt-1 w-36 bg-white border-2 border-purple-200 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+              <button onclick="setProtoRandomDigit(1)" class="w-full text-left px-4 py-1.5 text-xs font-bold text-gray-700 hover:bg-purple-100">1桁 (1〜9)</button>
+              <button onclick="setProtoRandomDigit(2)" class="w-full text-left px-4 py-1.5 text-xs font-bold text-gray-700 hover:bg-purple-100">2桁 (10〜99)</button>
+              <button onclick="setProtoRandomDigit(3)" class="w-full text-left px-4 py-1.5 text-xs font-bold text-gray-700 hover:bg-purple-100">3桁 (100〜999)</button>
+              <button onclick="setProtoRandomDigit(4)" class="w-full text-left px-4 py-1.5 text-xs font-bold text-gray-700 hover:bg-purple-100">4桁 (1000〜9999)</button>
+              <button onclick="setProtoRandomDigit(5)" class="w-full text-left px-4 py-1.5 text-xs font-bold text-gray-700 hover:bg-purple-100">5桁 (10000〜99999)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5つの桁のドロップダウン（万・千・百・十・一） -->
+        <div class="grid grid-cols-5 gap-1.5">
+          <div class="flex flex-col items-center">
+            <span class="text-[10px] font-bold text-purple-700">万</span>
+            <select id="digit-10000" onchange="onProtoDigitChange()" class="w-full bg-white border border-purple-300 rounded-lg p-1 text-center font-black text-gray-800 text-base focus:ring-2 focus:ring-purple-400">
+              <option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            </select>
+          </div>
+          <div class="flex flex-col items-center">
+            <span class="text-[10px] font-bold text-purple-700">千</span>
+            <select id="digit-1000" onchange="onProtoDigitChange()" class="w-full bg-white border border-purple-300 rounded-lg p-1 text-center font-black text-gray-800 text-base focus:ring-2 focus:ring-purple-400">
+              <option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            </select>
+          </div>
+          <div class="flex flex-col items-center">
+            <span class="text-[10px] font-bold text-purple-700">百</span>
+            <select id="digit-100" onchange="onProtoDigitChange()" class="w-full bg-white border border-purple-300 rounded-lg p-1 text-center font-black text-gray-800 text-base focus:ring-2 focus:ring-purple-400">
+              <option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            </select>
+          </div>
+          <div class="flex flex-col items-center">
+            <span class="text-[10px] font-bold text-purple-700">十</span>
+            <select id="digit-10" onchange="onProtoDigitChange()" class="w-full bg-white border border-purple-300 rounded-lg p-1 text-center font-black text-gray-800 text-base focus:ring-2 focus:ring-purple-400">
+              <option value="0">0</option><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            </select>
+          </div>
+          <div class="flex flex-col items-center">
+            <span class="text-[10px] font-bold text-purple-700">一</span>
+            <select id="digit-1" onchange="onProtoDigitChange()" class="w-full bg-white border border-purple-300 rounded-lg p-1 text-center font-black text-gray-800 text-base focus:ring-2 focus:ring-purple-400">
+              <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 案Bメイン検証ステージ -->
+    <div class="flex-1 bg-white rounded-3xl shadow-lg border-2 border-purple-100 p-4 flex flex-col justify-start items-center min-h-[420px] relative overflow-hidden">
+      
+      <div id="proto-mode-title" class="text-xs font-bold text-purple-700 bg-purple-50 px-4 py-1.5 rounded-full border border-purple-200 mb-4 text-center">
+        🏠 案B: 位のお部屋（数字 ➔ 位の言葉フォーカス読み上げ）
+      </div>
+
+      <!-- プロトタイプ表示エリア -->
+      <div id="proto-stage-area" class="w-full flex-1 flex flex-col items-center justify-center gap-6">
+        <!-- JavaScriptで位のお部屋（万〜一）を動的生成 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 結果発表画面 -->
   <div id="result-screen" class="hidden fixed inset-0 bg-slate-900 bg-opacity-80 backdrop-blur-sm z-50 flex justify-center items-center p-4">
     <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border-4 border-yellow-400 relative overflow-hidden">
-      <!-- クラッカーの装飾 -->
       <div class="text-7xl mb-4 text-yellow-500 animate-bounce">
         <i class="fa-solid fa-crown"></i>
       </div>
       <h2 class="text-3xl font-black text-gray-800 mb-2">お勉強おわり！</h2>
       <p class="text-emerald-600 font-bold mb-6 text-lg">たいへんよくできました！💮</p>
       
-      <!-- スコア内訳 -->
       <div class="bg-slate-50 p-4 rounded-2xl border border-gray-100 mb-6 text-left space-y-3 text-sm text-gray-600 font-bold">
         <div class="flex justify-between items-center">
           <span>🎯 いっぱつで あたったよ：</span>
@@ -206,7 +319,6 @@
         </div>
       </div>
 
-      <!-- ボタン群 -->
       <div class="space-y-3">
         <button onclick="restartWithSameSettings()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-extrabold py-3 px-6 rounded-xl text-lg shadow-md transform active:scale-95 transition-all">
           もう一回おなじ範囲で遊ぶ
@@ -218,16 +330,15 @@
     </div>
   </div>
 
-  <!-- 効果音代わりの簡易トースト通知用コンテナ -->
   <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full text-lg font-bold shadow-2xl opacity-0 transition-opacity duration-300 pointer-events-none z-50">
     メッセージ
   </div>
 
   <script>
     // ==========================================
-    // アプリケーション設定 (ここから変更可能です)
+    // アプリケーション設定
     // ==========================================
-    const APP_VERSION = "1.11"; // コード変更ごとに0.01追加
+    const APP_VERSION = "1.13"; // コード変更ごとに0.01追加
 
     // 状態管理
     let config = {
@@ -237,28 +348,29 @@
     };
 
     let state = {
-      // 12問サイクル用
       questions: [],        
       currentIndex: 0,      
       isReviewMode: false,  
       
-      // 復習セッション用
       wrongNumbers: [],     
       reviewQuestions: [],  
       reviewIndex: 0,       
 
-      // スコア表示用
       firstTryCorrectCount: 0, 
       reviewCorrectCount: 0,   
       totalWrongCount: 0,      
       
       currentNumber: 0,
       isReadingShown: false,
-      isTransitioning: false,   // 連打・誤操作防止用フラグ
+      isTransitioning: false,   
 
-      // 手動確認待ち管理用
       isAwaitingManualConfirm: false,
       firstInputIsCorrect: null
+    };
+
+    // プロトタイプ用状態
+    let protoState = {
+      isReading: false
     };
 
     // 安全なタイマー管理
@@ -276,7 +388,6 @@
       activeTimers = [];
     }
 
-    // シャッフル関数
     function shuffleArray(array) {
       const arr = [...array];
       for (let i = arr.length - 1; i > 0; i--) {
@@ -286,7 +397,6 @@
       return arr;
     }
 
-    // 1セット12問の数字を選定
     function generateSessionQuestions(min, max) {
       const pool = [];
       for (let i = min; i <= max; i++) {
@@ -308,7 +418,6 @@
       return result;
     }
 
-    // 桁分解パズルロジック
     function getDigitDecomposition(num) {
       if (num === 0) {
         return [{
@@ -420,18 +529,6 @@
       }
     }
 
-    function resetActionButtonsUI() {
-      const container = document.getElementById('action-buttons');
-      container.className = "grid grid-cols-[9fr_2fr_9fr] gap-3";
-
-      document.getElementById('btn-wrong').classList.remove('hidden');
-      document.getElementById('btn-reading').classList.remove('hidden');
-      document.getElementById('btn-correct').classList.remove('hidden');
-
-      document.getElementById('label-wrong').innerText = "ちがう";
-      document.getElementById('label-correct').innerText = "あってる";
-    }
-
     function startGame() {
       clearAllTimers();
       const minInput = parseInt(document.getElementById('min-val').value);
@@ -464,6 +561,7 @@
       state.firstInputIsCorrect = null;
 
       document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('proto-screen').classList.add('hidden');
       document.getElementById('result-screen').classList.add('hidden');
       document.getElementById('game-screen').classList.remove('hidden');
 
@@ -485,8 +583,8 @@
       state.isTransitioning = false;
       state.isAwaitingManualConfirm = false;
       disableActionButtons(false);
-      resetActionButtonsUI();
       document.getElementById('game-screen').classList.add('hidden');
+      document.getElementById('proto-screen').classList.add('hidden');
       document.getElementById('result-screen').classList.add('hidden');
       document.getElementById('start-screen').classList.remove('hidden');
     }
@@ -618,7 +716,6 @@
       const decompContainer = document.getElementById('decomposition-container');
       decompContainer.innerHTML = '';
 
-      // スロットステージの初期化
       const slotStage = document.getElementById('slot-stage');
       slotStage.innerHTML = '';
       slotStage.classList.add('hidden');
@@ -627,7 +724,6 @@
       numTextEl.classList.remove('hidden');
       numTextEl.style.transform = 'scale(1)';
 
-      // ボタンUI・非表示の完全初期化
       resetActionButtonsUI();
 
       if (!state.isReviewMode) {
@@ -653,311 +749,27 @@
       disableActionButtons(false);
     }
 
-    function appendDecompositionCardElement(item, index) {
-      const decompContainer = document.getElementById('decomposition-container');
-      
-      const card = document.createElement('div');
-      card.className = `flex flex-col items-center bg-white border-2 ${item.color} rounded-2xl p-2 px-4 shadow-md opacity-0 transform scale-75 border-b-4`;
-      card.innerHTML = `
-        <span class="text-2xl md:text-3xl font-extrabold tracking-tight">${item.label}</span>
-        <span class="text-xs md:text-sm font-bold text-gray-500 mt-1 bg-white bg-opacity-70 px-2 rounded-full">${item.reading}</span>
-      `;
-      
-      decompContainer.appendChild(card);
+    function resetActionButtonsUI() {
+      const container = document.getElementById('action-buttons');
+      container.className = "grid grid-cols-[9fr_2fr_9fr] gap-3";
 
-      setSafeTimeout(() => {
-        card.classList.remove('opacity-0', 'scale-75');
-        card.classList.add('animate-pop-in');
-      }, 50);
+      document.getElementById('btn-wrong').classList.remove('hidden');
+      document.getElementById('btn-reading').classList.remove('hidden');
+      document.getElementById('btn-correct').classList.remove('hidden');
+
+      document.getElementById('label-wrong').innerText = "ちがう";
+      document.getElementById('label-correct').innerText = "あってる";
     }
 
-    function triggerSlotDecompositionAnimation(onCompleteCallback) {
-      const slotStage = document.getElementById('slot-stage');
-      const numTextEl = document.getElementById('number-text');
-
-      numTextEl.classList.add('hidden');
-      slotStage.classList.remove('hidden');
-      slotStage.innerHTML = '';
-
-      const num = state.currentNumber;
-      const numStr = num.toString();
-      const len = numStr.length;
-
-      if (len === 1) {
-        slotStage.style.width = '100px';
-        const card = document.createElement('div');
-        card.className = "w-24 h-36 flex items-center justify-center font-extrabold rounded-2xl border-2 border-b-8 shadow-lg bg-rose-500 border-rose-600 text-white text-7xl animate-drop-slot";
-        card.innerText = numStr;
-        slotStage.appendChild(card);
-        
-        setSafeTimeout(() => {
-          if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(num.toString());
-            utterance.lang = 'ja-JP';
-            utterance.rate = 1.1;
-            window.speechSynthesis.speak(utterance);
-          }
-          appendDecompositionCardElement({label: num.toString(), reading: getReadingText(num), color: 'bg-rose-100 text-rose-800 border-rose-300'}, 0);
-          
-          setSafeTimeout(() => {
-            if (onCompleteCallback) onCompleteCallback();
-          }, 800);
-        }, 700);
-        return;
-      }
-
-      const cellWidth = window.innerWidth < 640 ? 75 : 105; 
-      const cellHeight = window.innerWidth < 640 ? 110 : 155;
-      const gap = 8;
-      const totalWidth = cellWidth * len + gap * (len - 1);
-      
-      slotStage.style.width = `${totalWidth}px`;
-      slotStage.className = "relative h-40 md:h-52 flex justify-center items-center select-none mb-4 font-mono";
-
-      const cells = [];
-      for (let i = 0; i < len; i++) {
-        const cell = document.createElement('div');
-        cell.className = "relative flex items-center justify-center rounded-2xl bg-slate-50 border border-dashed border-slate-300";
-        cell.style.width = `${cellWidth}px`;
-        cell.style.height = `${cellHeight}px`;
-        slotStage.appendChild(cell);
-        cells.push(cell);
-      }
-
-      const baseDigits = [];
-      const highestDigitChar = numStr.charAt(0);
-      const highestDigitVal = parseInt(highestDigitChar);
-
-      let highestColorTheme = "";
-      let highestReading = "";
-      if (len === 3) {
-        highestColorTheme = "border-emerald-500 bg-white text-emerald-600"; 
-        highestReading = getReadingText(highestDigitVal * 100);
-      } else {
-        highestColorTheme = "border-sky-500 bg-white text-sky-600"; 
-        highestReading = getReadingText(highestDigitVal * 10);
-      }
-
-      baseDigits.push({
-        digitIndex: 0,
-        char: highestDigitChar,
-        reading: highestReading,
-        colorTheme: highestColorTheme,
-        borderColor: len === 3 ? "border-emerald-400" : "border-sky-400",
-        decompItem: len === 3 ? {label: (highestDigitVal * 100).toString(), reading: highestReading, color: 'bg-emerald-100 text-emerald-800 border-emerald-300'} : {label: (highestDigitVal * 10).toString(), reading: highestReading, color: 'bg-sky-100 text-sky-800 border-sky-300'}
-      });
-
-      for (let i = 1; i < len; i++) {
-        baseDigits.push({
-          digitIndex: i,
-          char: "0",
-          reading: "", 
-          colorTheme: "border-slate-300 bg-slate-100 text-slate-400", 
-          borderColor: "border-slate-300",
-          decompItem: null
-        });
-      }
-
-      const activeBaseCards = []; 
-      baseDigits.forEach((digit) => {
-        const cell = cells[digit.digitIndex];
-        
-        const card = document.createElement('div');
-        card.className = `absolute inset-0 flex items-center justify-center font-black rounded-2xl border-2 border-b-8 shadow-md opacity-0 z-10`;
-        card.className += ` ${digit.colorTheme}`;
-        card.className += len >= 3 ? " text-5xl md:text-7xl" : " text-6xl md:text-8xl";
-        card.innerText = digit.char;
-
-        const ring = document.createElement('div');
-        ring.className = `absolute rounded-3xl border-4 opacity-0 pointer-events-none z-0`;
-        ring.style.width = "115%";
-        ring.style.height = "115%";
-        ring.className += ` ${digit.borderColor}`;
-
-        cell.appendChild(ring);
-        cell.appendChild(card);
-
-        activeBaseCards[digit.digitIndex] = { card, ring };
-
-        card.classList.remove('opacity-0');
-        card.classList.add('animate-drop-slot');
-
-        setSafeTimeout(() => {
-          ring.classList.add('animate-shockwave');
-          if (digit.reading && 'speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(digit.reading);
-            utterance.lang = 'ja-JP';
-            utterance.rate = 1.1;
-            window.speechSynthesis.speak(utterance);
-          }
-          if (digit.decompItem) {
-            appendDecompositionCardElement(digit.decompItem, 0);
-          }
-        }, 400); 
-      });
-
-      let currentStepDelay = 1500;
-
-      for (let i = 1; i < len; i++) {
-        const char = numStr.charAt(i);
-        const val = parseInt(char);
-
-        if (val === 0) {
-          continue; 
-        }
-
-        const digitIndex = i;
-        const cell = cells[digitIndex];
-
-        let colorTheme = "";
-        let reading = "";
-        let borderColor = "";
-        let decompItem = null;
-
-        if (len === 3 && digitIndex === 1) {
-          colorTheme = "border-sky-500 bg-white text-sky-600";
-          reading = getReadingText(val * 10);
-          borderColor = "border-sky-400";
-          decompItem = {label: (val * 10).toString(), reading: reading, color: 'bg-sky-100 text-sky-800 border-sky-300'};
-        } else {
-          colorTheme = "border-rose-500 bg-white text-rose-600";
-          const oReadings = {1:'いち', 2:'に', 3:'さん', 4:'よん', 5:'ご', 6:'ろく', 7:'なな', 8:'はち', 9:'きゅう'};
-          reading = oReadings[val];
-          borderColor = "border-rose-400";
-          decompItem = {label: val.toString(), reading: reading, color: 'bg-rose-100 text-rose-800 border-rose-300'};
-        }
-
-        const stepIdx = i;
-
-        setSafeTimeout(() => {
-          const overCard = document.createElement('div');
-          overCard.className = `absolute inset-0 flex items-center justify-center font-black rounded-2xl border-2 border-b-8 shadow-md opacity-0 z-20`;
-          overCard.className += ` ${colorTheme}`;
-          overCard.className += len >= 3 ? " text-5xl md:text-7xl" : " text-6xl md:text-8xl";
-          overCard.innerText = char;
-
-          const ring = document.createElement('div');
-          ring.className = `absolute rounded-3xl border-4 opacity-0 pointer-events-none z-10`;
-          ring.style.width = "115%";
-          ring.style.height = "115%";
-          ring.className += ` ${borderColor}`;
-
-          cell.appendChild(ring);
-          cell.appendChild(overCard);
-
-          overCard.classList.remove('opacity-0');
-          overCard.classList.add('animate-drop-slot');
-
-          setSafeTimeout(() => {
-            ring.classList.add('animate-shockwave');
-            
-            if ('speechSynthesis' in window) {
-              window.speechSynthesis.cancel();
-              const utterance = new SpeechSynthesisUtterance(reading);
-              utterance.lang = 'ja-JP';
-              utterance.rate = 1.1;
-              window.speechSynthesis.speak(utterance);
-            }
-
-            if (decompItem) {
-              appendDecompositionCardElement(decompItem, stepIdx);
-            }
-          }, 400);
-
-        }, currentStepDelay);
-
-        currentStepDelay += 1500; 
-      }
-
-      const totalWait = currentStepDelay + 500; 
-
-      setSafeTimeout(() => {
-        slotStage.classList.add('scale-105');
-
-        for (let i = 1; i < len; i++) {
-          const char = numStr.charAt(i);
-          if (parseInt(char) === 0) {
-            const baseElements = activeBaseCards[i];
-            if (baseElements) {
-              const card = baseElements.card;
-              const ring = baseElements.ring;
-
-              card.classList.remove('border-slate-300', 'bg-slate-100', 'text-slate-400');
-              
-              let activeColorTheme = "";
-              let activeRingColor = "";
-              if (len === 3 && i === 1) {
-                activeColorTheme = "border-sky-500 bg-white text-sky-600";
-                activeRingColor = "border-sky-400";
-              } else {
-                activeColorTheme = "border-rose-500 bg-white text-rose-600";
-                activeRingColor = "border-rose-400";
-              }
-              
-              card.className += ` ${activeColorTheme} transition-colors duration-300`;
-
-              if (ring) {
-                ring.classList.remove('border-slate-300', 'animate-shockwave');
-                ring.className += ` ${activeRingColor}`;
-                void ring.offsetWidth; 
-                ring.classList.add('animate-shockwave');
-              }
-            }
-          }
-        }
-
-        setSafeTimeout(() => {
-          slotStage.classList.remove('scale-105');
-        }, 150);
-
-        if (onCompleteCallback) onCompleteCallback();
-      }, totalWait);
-    }
-
-    function showReading(forceSpeech = true) {
-      // 既に読み表示済みの場合はスロット演出を再実行するために状態を一度リセット
-      state.isReadingShown = true;
-
-      const readingEl = document.getElementById('reading-text');
-      readingEl.classList.add('opacity-0');
-
-      document.getElementById('decomposition-container').innerHTML = '';
-
-      triggerSlotDecompositionAnimation(() => {
-        readingEl.classList.remove('opacity-0');
-
-        if (forceSpeech && 'speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-          const utterance = new SpeechSynthesisUtterance(state.currentNumber.toString());
-          utterance.lang = 'ja-JP';
-          utterance.rate = 0.95; 
-          window.speechSynthesis.speak(utterance);
-        }
-      });
-    }
-
-    // 「よみ・こたえ」ボタンを押したときの処理（再押下時の演出再再生に対応）
     function handleShowReadingButton() {
-      if (state.isTransitioning) return; // 演出動作中の連打のみブロック
+      if (state.isTransitioning) return; 
 
       state.firstInputIsCorrect = false; 
-      
-      state.isReadingShown = false; // 再再生を許可
+      state.isReadingShown = false; 
       showReading(true);
 
       state.isTransitioning = true;
       disableActionButtons(true);
-
-      const numStr = state.currentNumber.toString();
-      const len = numStr.length;
-      
-      let nonZeroCount = 0;
-      for (let i = 1; i < len; i++) {
-        if (parseInt(numStr.charAt(i)) > 0) nonZeroCount++;
-      }
-      const totalWait = len === 1 ? 1500 : (nonZeroCount * 1500 + 3000);
 
       setSafeTimeout(() => {
         state.isTransitioning = false;
@@ -966,16 +778,29 @@
         state.isAwaitingManualConfirm = true;
         updateProgressUI();
 
-        // ◯（あってる）ボタンのみを画面から非表示にする
         document.getElementById('btn-correct').classList.add('hidden');
-        document.getElementById('btn-reading').classList.remove('hidden'); // よみ・こたえボタンは残す
+        document.getElementById('btn-reading').classList.remove('hidden'); 
         
-        // ボタンエリアを2列構成（よみ・こたえ : つぎへ進む = 3 : 7）に変更
         const container = document.getElementById('action-buttons');
         container.className = "grid grid-cols-[3fr_7fr] gap-3";
 
         document.getElementById('label-wrong').innerText = "つぎへ進む";
-      }, totalWait);
+      }, 2000);
+    }
+
+    function showReading(forceSpeech = true) {
+      state.isReadingShown = true;
+
+      const readingEl = document.getElementById('reading-text');
+      readingEl.classList.remove('opacity-0');
+
+      if (forceSpeech && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(state.currentNumber.toString());
+        utterance.lang = 'ja-JP';
+        utterance.rate = 0.95; 
+        window.speechSynthesis.speak(utterance);
+      }
     }
 
     function handleAnswer(isCorrect) {
@@ -988,31 +813,14 @@
         if (isCorrect) {
           showReading(true);
 
-          const numStr = state.currentNumber.toString();
-          const len = numStr.length;
-          let nonZeroCount = 0;
-          for (let i = 1; i < len; i++) {
-            if (parseInt(numStr.charAt(i)) > 0) nonZeroCount++;
-          }
-          const animDuration = len === 1 ? 1500 : (nonZeroCount * 1500 + 3000);
-          const totalWait = animDuration + 2000; 
-
           setSafeTimeout(() => {
             proceedToNext(true); 
-          }, totalWait);
+          }, 2000);
 
         } else {
           setSafeTimeout(() => {
             state.isReadingShown = false;
             showReading(true);
-
-            const numStr = state.currentNumber.toString();
-            const len = numStr.length;
-            let nonZeroCount = 0;
-            for (let i = 1; i < len; i++) {
-              if (parseInt(numStr.charAt(i)) > 0) nonZeroCount++;
-            }
-            const totalWait = len === 1 ? 1500 : (nonZeroCount * 1500 + 3000);
 
             setSafeTimeout(() => {
               state.isTransitioning = false;
@@ -1030,8 +838,8 @@
               container.className = "grid grid-cols-[3fr_7fr] gap-3";
 
               document.getElementById('label-wrong').innerText = "つぎへ進む";
-            }, totalWait);
-          }, 1000);
+            }, 2000);
+          }, 500);
         }
       } else {
         state.isAwaitingManualConfirm = false;
@@ -1121,6 +929,271 @@
       }, 1800);
     }
 
+    // ==========================================
+    // 【新仕様】プロトタイプ画面 (案B: 位のお部屋・フォーカス読み)
+    // ==========================================
+    function openPrototypePage() {
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('game-screen').classList.add('hidden');
+      document.getElementById('result-screen').classList.add('hidden');
+      document.getElementById('proto-screen').classList.remove('hidden');
+      
+      renderProtoB();
+    }
+
+    function exitPrototypePage() {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      document.getElementById('proto-screen').classList.add('hidden');
+      document.getElementById('start-screen').classList.remove('hidden');
+    }
+
+    function toggleRandomMenu() {
+      const menu = document.getElementById('random-menu');
+      menu.classList.toggle('hidden');
+    }
+
+    // ドロップダウン値取得から全体の数値を復元
+    function getProtoValueFromSelects() {
+      const d10000 = document.getElementById('digit-10000').value;
+      const d1000 = document.getElementById('digit-1000').value;
+      const d100 = document.getElementById('digit-100').value;
+      const d10 = document.getElementById('digit-10').value;
+      const d1 = document.getElementById('digit-1').value;
+
+      const numStr = `${d10000}${d1000}${d100}${d10}${d1}`;
+      return parseInt(numStr, 10);
+    }
+
+    function onProtoDigitChange() {
+      renderProtoB();
+    }
+
+    // 指定桁数でのランダム生成
+    function setProtoRandomDigit(digits) {
+      document.getElementById('random-menu').classList.add('hidden');
+
+      let min = Math.pow(10, digits - 1);
+      let max = Math.pow(10, digits) - 1;
+      if (digits === 1) min = 1; // 1〜9
+
+      const rand = Math.floor(Math.random() * (max - min + 1)) + min;
+      const randStr = rand.toString().padStart(5, '0');
+
+      document.getElementById('digit-10000').value = randStr.charAt(0);
+      document.getElementById('digit-1000').value = randStr.charAt(1);
+      document.getElementById('digit-100').value = randStr.charAt(2);
+      document.getElementById('digit-100').value = randStr.charAt(2);
+      document.getElementById('digit-10').value = randStr.charAt(3);
+      document.getElementById('digit-1').value = randStr.charAt(4);
+
+      renderProtoB();
+    }
+
+    // 日本語数詞発音テーブル（特殊音変化に対応）
+    function getDigitReadingPhonetics(digitChar, place) {
+      const d = parseInt(digitChar, 10);
+      if (d === 0) return { numReading: '', placeReading: '' };
+
+      if (place === '万') {
+        const numReadings = {1:'いち', 2:'に', 3:'さん', 4:'よん', 5:'ご', 6:'ろく', 7:'なな', 8:'はち', 9:'きゅう'};
+        return { numReading: numReadings[d], placeReading: 'まん' };
+      }
+      if (place === '千') {
+        if (d === 1) return { numReading: '', placeReading: 'せん' };
+        if (d === 3) return { numReading: 'さん', placeReading: 'ぜん' };
+        if (d === 8) return { numReading: 'はっ', placeReading: 'せん' };
+        const numReadings = {2:'に', 4:'よん', 5:'ご', 6:'ろく', 7:'なな', 9:'きゅう'};
+        return { numReading: numReadings[d], placeReading: 'せん' };
+      }
+      if (place === '百') {
+        if (d === 1) return { numReading: '', placeReading: 'ひゃく' };
+        if (d === 3) return { numReading: 'さん', placeReading: 'びゃく' };
+        if (d === 6) return { numReading: 'ろっ', placeReading: 'ぴゃく' };
+        if (d === 8) return { numReading: 'はっ', placeReading: 'ぴゃく' };
+        const numReadings = {2:'に', 4:'よん', 5:'ご', 7:'なな', 9:'きゅう'};
+        return { numReading: numReadings[d], placeReading: 'ひゃく' };
+      }
+      if (place === '十') {
+        if (d === 1) return { numReading: '', placeReading: 'じゅう' };
+        const numReadings = {2:'机', 2:'に', 3:'さん', 4:'よん', 5:'ご', 6:'ろく', 7:'なな', 8:'はち', 9:'きゅう'};
+        return { numReading: numReadings[d], placeReading: 'じゅう' };
+      }
+      if (place === '一') {
+        const numReadings = {1:'いち', 2:'に', 3:'さん', 4:'よん', 5:'ご', 6:'ろく', 7:'なな', 8:'はち', 9:'きゅう'};
+        return { numReading: numReadings[d], placeReading: '' };
+      }
+      return { numReading: '', placeReading: '' };
+    }
+
+    // 案Bのレンダリング
+    function renderProtoB() {
+      const val = getProtoValueFromSelects();
+      const numStr = val.toString().padStart(5, '0');
+      const stage = document.getElementById('proto-stage-area');
+      stage.innerHTML = '';
+
+      const wrapper = document.createElement('div');
+      wrapper.className = "flex flex-col items-center gap-6 w-full max-w-sm";
+
+      // 位のお部屋テーブル（5桁）
+      const places = [
+        { key: '10000', label: 'まん', char: numStr.charAt(0), color: 'border-purple-400 bg-purple-50 text-purple-700', headBg: 'bg-purple-600' },
+        { key: '1000',  label: 'せん', char: numStr.charAt(1), color: 'border-amber-400 bg-amber-50 text-amber-700', headBg: 'bg-amber-500' },
+        { key: '100',   label: 'ひゃく', char: numStr.charAt(2), color: 'border-emerald-400 bg-emerald-50 text-emerald-700', headBg: 'bg-emerald-500' },
+        { key: '10',    label: 'じゅう', char: numStr.charAt(3), color: 'border-sky-400 bg-sky-50 text-sky-700', headBg: 'bg-sky-500' },
+        { key: '1',     label: '', char: numStr.charAt(4), color: 'border-rose-400 bg-rose-50 text-rose-700', headBg: 'bg-rose-500' }
+      ];
+
+      const roomGrid = document.createElement('div');
+      roomGrid.className = "grid grid-cols-5 gap-1.5 w-full bg-slate-800 p-2.5 rounded-3xl shadow-xl border-4 border-slate-700";
+
+      places.forEach((p, idx) => {
+        const col = document.createElement('div');
+        col.className = "flex flex-col items-center gap-1.5";
+
+        // 数字枠（部屋の中）
+        const numBox = document.createElement('div');
+        numBox.id = `proto-box-${idx}`;
+        numBox.className = `w-full h-20 md:h-24 flex items-center justify-center font-black text-4xl md:text-5xl rounded-2xl border-4 bg-white shadow-inner transition-all duration-200 ${p.color}`;
+        numBox.innerText = p.char;
+
+        // 枠の下の言葉（位のラベル）
+        const labelBox = document.createElement('div');
+        labelBox.id = `proto-label-${idx}`;
+        labelBox.className = `w-full h-8 flex items-center justify-center font-extrabold text-xs md:text-sm rounded-xl text-white shadow transition-all duration-200 ${p.headBg}`;
+        labelBox.innerText = p.label || '一';
+
+        col.appendChild(numBox);
+        col.appendChild(labelBox);
+        roomGrid.appendChild(col);
+      });
+
+      wrapper.appendChild(roomGrid);
+
+      // 読み上げ実行ボタン
+      const playBtn = document.createElement('button');
+      playBtn.id = "proto-play-btn";
+      playBtn.className = "w-full bg-purple-600 hover:bg-purple-700 text-white font-extrabold py-3.5 px-6 rounded-2xl text-lg shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2";
+      playBtn.innerHTML = `<i class="fa-solid fa-circle-play text-xl"></i> ▶ 音声とフォーカスで順にひもとく`;
+      
+      playBtn.onclick = () => {
+        runProtoBFocusSequence(numStr, places);
+      };
+
+      wrapper.appendChild(playBtn);
+      stage.appendChild(wrapper);
+    }
+
+    // 順次フォーカス移動＆読み上げ処理
+    function runProtoBFocusSequence(numStr, places) {
+      if (protoState.isReading) return;
+      protoState.isReading = true;
+
+      const btn = document.getElementById('proto-play-btn');
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50');
+      }
+
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+      // リセット（フォーカス解除）
+      for (let i = 0; i < 5; i++) {
+        const b = document.getElementById(`proto-box-${i}`);
+        const l = document.getElementById(`proto-label-${i}`);
+        if (b) b.classList.remove('active-focus-num');
+        if (l) l.classList.remove('active-focus-label');
+      }
+
+      const placeNames = ['万', '千', '百', '十', '一'];
+      const sequence = [];
+
+      // 先頭の無効な「0」をスキップするフラグ
+      let hasStarted = false;
+
+      for (let i = 0; i < 5; i++) {
+        const char = numStr.charAt(i);
+        const d = parseInt(char, 10);
+        const placeName = placeNames[i];
+
+        if (d > 0) hasStarted = true;
+
+        if (hasStarted) {
+          const phonetics = getDigitReadingPhonetics(char, placeName);
+          
+          if (phonetics.numReading !== '' || phonetics.placeReading !== '') {
+            if (phonetics.numReading !== '') {
+              sequence.push({ type: 'num', index: i, speech: phonetics.numReading });
+            }
+            if (phonetics.placeReading !== '') {
+              sequence.push({ type: 'label', index: i, speech: phonetics.placeReading });
+            }
+          }
+        }
+      }
+
+      // 全部ゼロ（0）の場合の特別ハンドリング
+      if (sequence.length === 0) {
+        sequence.push({ type: 'num', index: 4, speech: 'れい' });
+      }
+
+      let stepIndex = 0;
+
+      function playNextStep() {
+        if (stepIndex >= sequence.length) {
+          // 終了時リセット
+          setSafeTimeout(() => {
+            for (let i = 0; i < 5; i++) {
+              const b = document.getElementById(`proto-box-${i}`);
+              const l = document.getElementById(`proto-label-${i}`);
+              if (b) b.classList.remove('active-focus-num');
+              if (l) l.classList.remove('active-focus-label');
+            }
+            protoState.isReading = false;
+            if (btn) {
+              btn.disabled = false;
+              btn.classList.remove('opacity-50');
+            }
+          }, 600);
+          return;
+        }
+
+        const step = sequence[stepIndex];
+
+        // 前のフォーカス解除
+        for (let i = 0; i < 5; i++) {
+          const b = document.getElementById(`proto-box-${i}`);
+          const l = document.getElementById(`proto-label-${i}`);
+          if (b) b.classList.remove('active-focus-num');
+          if (l) l.classList.remove('active-focus-label');
+        }
+
+        // 今回のフォーカス適用
+        if (step.type === 'num') {
+          const targetBox = document.getElementById(`proto-box-${step.index}`);
+          if (targetBox) targetBox.classList.add('active-focus-num');
+        } else {
+          const targetLabel = document.getElementById(`proto-label-${step.index}`);
+          if (targetLabel) targetLabel.classList.add('active-focus-label');
+        }
+
+        // 発声
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(step.speech);
+          utterance.lang = 'ja-JP';
+          utterance.rate = 1.0;
+          window.speechSynthesis.speak(utterance);
+        }
+
+        stepIndex++;
+        setSafeTimeout(playNextStep, 700); // 700ms間隔でリズミカルに移動
+      }
+
+      playNextStep();
+    }
+
+    // ページロード時設定
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('version-display').innerText = `Ver ${APP_VERSION}`;
     });
