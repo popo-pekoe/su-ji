@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 数字おぼえゲーム Ver 1.18 -->
+<!-- 数字おぼえゲーム Ver 1.19 -->
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -388,7 +388,7 @@
     // ==========================================
     // アプリケーション設定
     // ==========================================
-    const APP_VERSION = "1.18"; // コード変更ごとに0.01追加
+    const APP_VERSION = "1.19"; // コード変更ごとに0.01追加
 
     // 状態管理
     let config = {
@@ -1470,16 +1470,13 @@
     }
 
     function speakRoomPlaces() {
-      stopRoomReading();
-      if (!('speechSynthesis' in window)) return;
-      const utterance = createRoomUtterance('いち、じゅう、ひゃく、せん、まん');
-      roomState.utterance = utterance;
-      const release = () => {
-        if (roomState.utterance === utterance) roomState.utterance = null;
-      };
-      utterance.onend = release;
-      utterance.onerror = release;
-      window.speechSynthesis.speak(utterance);
+      playRoomSequence([
+        { type: 'label', index: 4, speech: 'いち' },
+        { type: 'label', index: 3, speech: 'じゅう' },
+        { type: 'label', index: 2, speech: 'ひゃく' },
+        { type: 'label', index: 1, speech: 'せん' },
+        { type: 'label', index: 0, speech: 'まん' }
+      ]);
     }
 
     function getRoomNumberSpeech(numStr) {
@@ -1496,16 +1493,6 @@
 
     function runRoomFocusSequence(numStr, places) {
       if (roomState.isReading) return;
-      stopRoomReading();
-      roomState.isReading = true;
-      const readingId = roomState.readingId;
-      const isCurrent = () => roomState.isReading && roomState.readingId === readingId;
-      const btn = document.getElementById('room-play-btn');
-      if (btn) {
-        btn.disabled = true;
-        btn.classList.add('opacity-50');
-      }
-
       const placeNames = ['万', '千', '百', '十', '一'];
       const sequence = [];
       for (let i = 0; i < 5; i++) {
@@ -1521,6 +1508,20 @@
         sequence.push({ type: 'num', index: 4, speech: 'れい' });
       }
       sequence.push({ type: 'whole', speech: getRoomNumberSpeech(numStr) });
+      playRoomSequence(sequence);
+    }
+
+    // 数字と位の読み上げで、音声に同期するフォーカスアニメーションを共用する。
+    function playRoomSequence(sequence) {
+      stopRoomReading();
+      roomState.isReading = true;
+      const readingId = roomState.readingId;
+      const isCurrent = () => roomState.isReading && roomState.readingId === readingId;
+      const btn = document.getElementById('room-play-btn');
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50');
+      }
       let stepIndex = 0;
 
       function playNextStep() {
