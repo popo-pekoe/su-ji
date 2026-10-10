@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- 数字おぼえゲーム Ver 1.18 -->
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -387,7 +388,7 @@
     // ==========================================
     // アプリケーション設定
     // ==========================================
-    const APP_VERSION = "1.17"; // コード変更ごとに0.01追加
+    const APP_VERSION = "1.18"; // コード変更ごとに0.01追加
 
     // 状態管理
     let config = {
@@ -419,7 +420,9 @@
 
     // くらいのおへや用状態
     let roomState = {
-      isReading: false
+      isReading: false,
+      readingId: 0,
+      utterance: null
     };
 
     // タイマー管理
@@ -585,6 +588,7 @@
 
     function exitToStartScreen() {
       clearAllTimers();
+      stopRoomReading();
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       
       roomState.isReading = false;
@@ -1372,6 +1376,7 @@
     }
 
     function renderRoomMode() {
+      stopRoomReading();
       const val = getProtoValueFromSelects();
       const numStr = val.toString().padStart(5, '0');
       const stage = document.getElementById('room-stage-area');
@@ -1400,10 +1405,13 @@
         numBox.className = `w-full h-24 md:h-28 flex items-center justify-center font-black text-5xl md:text-6xl rounded-2xl border-2 bg-white shadow-sm transition-all duration-200 ${p.color}`;
         numBox.innerText = p.char;
 
-        const labelBox = document.createElement('div');
+        const labelBox = document.createElement('button');
+        labelBox.type = 'button';
         labelBox.id = `room-label-${idx}`;
         labelBox.className = `w-full h-9 flex items-center justify-center font-black text-xs md:text-sm rounded-xl shadow-sm transition-all duration-200 ${p.headBg}`;
         labelBox.innerText = p.label;
+        labelBox.setAttribute('aria-label', `${p.label}のくらい。いち、じゅう、ひゃく、せん、まんをよみあげ`);
+        labelBox.onclick = speakRoomPlaces;
 
         col.appendChild(numBox);
         col.appendChild(labelBox);
@@ -1415,7 +1423,7 @@
       const playBtn = document.createElement('button');
       playBtn.id = "room-play-btn";
       playBtn.className = "w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-extrabold py-3.5 px-6 rounded-2xl text-base md:text-lg shadow-md active:scale-95 transition-all flex items-center justify-center gap-2";
-      playBtn.innerHTML = `<i class="fa-solid fa-circle-play text-xl"></i> ▶ 音声とフォーカスで順にひもとく`;
+      playBtn.innerHTML = `<i class="fa-solid fa-circle-play text-xl" aria-hidden="true"></i> よみあげ`;
       
       playBtn.onclick = () => {
         runRoomFocusSequence(numStr, places);
@@ -1425,103 +1433,131 @@
       stage.appendChild(wrapper);
     }
 
+    function createRoomUtterance(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ja-JP';
+      utterance.rate = 1.0;
+      const voices = window.speechSynthesis.getVoices();
+      const japaneseVoices = voices.filter(voice => /^ja(?:[-_]|$)/i.test(voice.lang));
+      const voice = japaneseVoices.find(voice => /^ja-JP$/i.test(voice.lang) && voice.localService)
+        || japaneseVoices.find(voice => /^ja-JP$/i.test(voice.lang))
+        || japaneseVoices[0];
+      if (voice) utterance.voice = voice;
+      return utterance;
+    }
+
+    function clearRoomFocus() {
+      for (let i = 0; i < 5; i++) {
+        const box = document.getElementById(`room-box-${i}`);
+        const label = document.getElementById(`room-label-${i}`);
+        if (box) box.classList.remove('active-focus-num');
+        if (label) label.classList.remove('active-focus-label');
+      }
+    }
+
+    function stopRoomReading() {
+      // cancel()に伴う古いイベントより先に、この読み上げを無効にする。
+      roomState.readingId++;
+      roomState.isReading = false;
+      roomState.utterance = null;
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      clearRoomFocus();
+      const btn = document.getElementById('room-play-btn');
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+      }
+    }
+
+    function speakRoomPlaces() {
+      stopRoomReading();
+      if (!('speechSynthesis' in window)) return;
+      const utterance = createRoomUtterance('いち、じゅう、ひゃく、せん、まん');
+      roomState.utterance = utterance;
+      const release = () => {
+        if (roomState.utterance === utterance) roomState.utterance = null;
+      };
+      utterance.onend = release;
+      utterance.onerror = release;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function getRoomNumberSpeech(numStr) {
+      // 漢数字のまとまりとして渡し、数字全体の自然な発音を音声エンジンに任せる。
+      const numerals = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+      const units = ['万', '千', '百', '十', ''];
+      return numStr.split('').map((char, index) => {
+        const digit = Number(char);
+        if (digit === 0) return '';
+        const numeral = digit === 1 && index > 0 && index < 4 ? '' : numerals[digit];
+        return numeral + units[index];
+      }).join('') || '零';
+    }
+
     function runRoomFocusSequence(numStr, places) {
       if (roomState.isReading) return;
+      stopRoomReading();
       roomState.isReading = true;
-
+      const readingId = roomState.readingId;
+      const isCurrent = () => roomState.isReading && roomState.readingId === readingId;
       const btn = document.getElementById('room-play-btn');
       if (btn) {
         btn.disabled = true;
         btn.classList.add('opacity-50');
       }
 
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-
-      for (let i = 0; i < 5; i++) {
-        const b = document.getElementById(`room-box-${i}`);
-        const l = document.getElementById(`room-label-${i}`);
-        if (b) b.classList.remove('active-focus-num');
-        if (l) l.classList.remove('active-focus-label');
-      }
-
       const placeNames = ['万', '千', '百', '十', '一'];
       const sequence = [];
-
-      let hasStarted = false;
-
       for (let i = 0; i < 5; i++) {
-        const char = numStr.charAt(i);
-        const d = parseInt(char, 10);
-        const placeName = placeNames[i];
-
-        if (d > 0) hasStarted = true;
-
-        if (hasStarted) {
-          const phonetics = getDigitReadingPhonetics(char, placeName);
-          
-          if (phonetics.numReading !== '' || phonetics.placeReading !== '') {
-            if (phonetics.numReading !== '') {
-              sequence.push({ type: 'num', index: i, speech: phonetics.numReading });
-            }
-            if (phonetics.placeReading !== '') {
-              sequence.push({ type: 'label', index: i, speech: phonetics.placeReading });
-            }
-          }
+        const phonetics = getDigitReadingPhonetics(numStr.charAt(i), placeNames[i]);
+        if (phonetics.numReading) {
+          sequence.push({ type: 'num', index: i, speech: phonetics.numReading });
+        }
+        if (phonetics.placeReading) {
+          sequence.push({ type: 'label', index: i, speech: phonetics.placeReading });
         }
       }
-
       if (sequence.length === 0) {
         sequence.push({ type: 'num', index: 4, speech: 'れい' });
       }
-
+      sequence.push({ type: 'whole', speech: getRoomNumberSpeech(numStr) });
       let stepIndex = 0;
 
       function playNextStep() {
+        if (!isCurrent()) return;
+        clearRoomFocus();
         if (stepIndex >= sequence.length) {
-          setSafeTimeout(() => {
-            for (let i = 0; i < 5; i++) {
-              const b = document.getElementById(`room-box-${i}`);
-              const l = document.getElementById(`room-label-${i}`);
-              if (b) b.classList.remove('active-focus-num');
-              if (l) l.classList.remove('active-focus-label');
-            }
-            roomState.isReading = false;
-            if (btn) {
-              btn.disabled = false;
-              btn.classList.remove('opacity-0');
-              btn.classList.remove('opacity-50');
-            }
-          }, 600);
+          stopRoomReading();
           return;
         }
-
-        const step = sequence[stepIndex];
-
-        for (let i = 0; i < 5; i++) {
-          const b = document.getElementById(`room-box-${i}`);
-          const l = document.getElementById(`room-label-${i}`);
-          if (b) b.classList.remove('active-focus-num');
-          if (l) l.classList.remove('active-focus-label');
-        }
-
-        if (step.type === 'num') {
-          const targetBox = document.getElementById(`room-box-${step.index}`);
-          if (targetBox) targetBox.classList.add('active-focus-num');
+        const step = sequence[stepIndex++];
+        if (step.type === 'whole') {
+          for (let i = 0; i < 5; i++) {
+            const box = document.getElementById(`room-box-${i}`);
+            if (box) box.classList.add('active-focus-num');
+          }
         } else {
-          const targetLabel = document.getElementById(`room-label-${step.index}`);
-          if (targetLabel) targetLabel.classList.add('active-focus-label');
+          const targetId = step.type === 'num' ? `room-box-${step.index}` : `room-label-${step.index}`;
+          const target = document.getElementById(targetId);
+          if (target) target.classList.add(step.type === 'num' ? 'active-focus-num' : 'active-focus-label');
         }
-
+        const advance = () => {
+          if (!isCurrent()) return;
+          roomState.utterance = null;
+          const delay = sequence[stepIndex]?.type === 'whole' ? 350 : 150;
+          setSafeTimeout(playNextStep, delay);
+        };
         if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-          const utterance = new SpeechSynthesisUtterance(step.speech);
-          utterance.lang = 'ja-JP';
-          utterance.rate = 1.0;
+          const utterance = createRoomUtterance(step.speech);
+          roomState.utterance = utterance;
+          utterance.onend = advance;
+          utterance.onerror = () => {
+            if (isCurrent()) stopRoomReading();
+          };
           window.speechSynthesis.speak(utterance);
+        } else {
+          setSafeTimeout(advance, 700);
         }
-
-        stepIndex++;
-        setSafeTimeout(playNextStep, 700); 
       }
 
       playNextStep();
