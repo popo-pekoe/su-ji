@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 数字おぼえゲーム Ver 1.19 -->
+<!-- 数字おぼえゲーム Ver 1.20 -->
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -388,7 +388,7 @@
     // ==========================================
     // アプリケーション設定
     // ==========================================
-    const APP_VERSION = "1.19"; // コード変更ごとに0.01追加
+    const APP_VERSION = "1.20"; // コード変更ごとに0.01追加
 
     // 状態管理
     let config = {
@@ -470,82 +470,62 @@
       return result;
     }
 
+    function getQuizPlaceTheme(exponent) {
+      const color = exponent >= 4 ? 'purple' : ['rose', 'sky', 'emerald', 'amber'][exponent];
+      return {
+        color: `bg-${color}-100 text-${color}-800 border-${color}-300`,
+        textColor: `text-${color}-500`,
+        colorTheme: `border-${color}-500 bg-white text-${color}-600`,
+        borderColor: `border-${color}-400`
+      };
+    }
+
     function getDigitDecomposition(num) {
       if (num === 0) {
         return [{
+          digitIndex: 0,
           value: 0,
           label: '0',
           reading: 'れい',
-          color: 'bg-slate-100 text-slate-800 border-slate-300'
+          sequenceReading: 'れい',
+          ...getQuizPlaceTheme(0)
         }];
       }
 
       const list = [];
       const numStr = num.toString();
-      const len = numStr.length;
-
-      if (len >= 3) {
-        const hDigit = parseInt(numStr.charAt(len - 3));
-        if (hDigit > 0) {
-          const val = hDigit * 100;
-          let rd = '';
-          if (hDigit === 1) rd = 'ひゃく';
-          else if (hDigit === 3) rd = 'さんびゃく';
-          else if (hDigit === 6) rd = 'ろっぴゃく';
-          else if (hDigit === 8) rd = 'はっぴゃく';
-          else {
-            const hReadings = {2:'に', 4:'よん', 5:'ご', 7:'なな', 9:'きゅう'};
-            rd = hReadings[hDigit] + 'ひゃく';
-          }
-          list.push({
-            value: val,
-            label: val.toString(),
-            reading: rd,
-            color: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-            textColor: 'text-emerald-500'
-          });
+      const placeNames = ['一', '十', '百', '千'];
+      const groupReadings = ['', 'まん', 'おく', 'ちょう', 'けい'];
+      for (let i = 0; i < numStr.length; i++) {
+        const digit = Number(numStr.charAt(i));
+        if (digit === 0) continue;
+        const exponent = numStr.length - i - 1;
+        const phonetics = getDigitReadingPhonetics(numStr.charAt(i), placeNames[exponent % 4]);
+        const digitReading = phonetics.numReading + phonetics.placeReading;
+        const groupReading = groupReadings[Math.floor(exponent / 4)];
+        let sequenceReading = digitReading;
+        // 万・億などは、同じ4桁のまとまりの最後に付ける。
+        const groupEnd = i + exponent % 4 + 1;
+        if (!/[1-9]/.test(numStr.slice(i + 1, groupEnd))) {
+          sequenceReading += groupReading;
         }
-      }
-
-      if (len >= 2) {
-        const tDigit = parseInt(numStr.charAt(len - 2));
-        if (tDigit > 0) {
-          const val = tDigit * 10;
-          let rd = '';
-          if (tDigit === 1) rd = 'じゅう';
-          else {
-            const tReadings = {2:'に', 3:'さん', 4:'よん', 5:'ご', 6:'ろく', 7:'なな', 8:'はち', 9:'きゅう'};
-            rd = tReadings[tDigit] + 'じゅう';
-          }
-          list.push({
-            value: val,
-            label: val.toString(),
-            reading: rd,
-            color: 'bg-sky-100 text-sky-800 border-sky-300',
-            textColor: 'text-sky-500'
-          });
-        }
-      }
-
-      const oDigit = parseInt(numStr.charAt(len - 1));
-      if (oDigit > 0) {
-        const oReadings = {1:'いち', 2:'に', 3:'さん', 4:'よん', 5:'ご', 6:'ろく', 7:'なな', 8:'はち', 9:'きゅう'};
+        const value = digit * Math.pow(10, exponent);
         list.push({
-          value: oDigit,
-          label: oDigit.toString(),
-          reading: oReadings[oDigit],
-          color: 'bg-rose-100 text-rose-800 border-rose-300',
-          textColor: 'text-rose-500'
+          digitIndex: i,
+          value,
+          label: value.toString(),
+          reading: digitReading + groupReading,
+          sequenceReading,
+          ...getQuizPlaceTheme(exponent)
         });
       }
-
       return list;
     }
 
     function getReadingText(num) {
       if (num === undefined || num === null) return '';
       const decomp = getDigitDecomposition(num);
-      return decomp.map(item => item.reading).join('');
+      return decomp.map(item => item.sequenceReading).join('');
     }
 
     function setRange(min, max) {
@@ -743,27 +723,10 @@
         span.className = "text-slate-800 transition-colors duration-300";
 
         if (isColored) {
-          const currentPosFromRight = len - i;
-
-          if (currentPosFromRight === 3) {
-            if (parseInt(char) > 0) {
-              span.className = "text-emerald-500 font-black transition-colors duration-300";
-            } else {
-              span.className = "text-slate-300 font-normal transition-colors duration-300"; 
-            }
-          } else if (currentPosFromRight === 2) {
-            if (parseInt(char) > 0) {
-              span.className = "text-sky-500 font-black transition-colors duration-300";
-            } else {
-              span.className = "text-slate-300 font-normal transition-colors duration-300"; 
-            }
-          } else if (currentPosFromRight === 1) {
-            if (parseInt(char) > 0 || num === 0) {
-              span.className = "text-rose-500 font-black transition-colors duration-300";
-            } else {
-              span.className = "text-slate-300 font-normal transition-colors duration-300"; 
-            }
-          }
+          const theme = getQuizPlaceTheme(len - i - 1);
+          span.className = parseInt(char) > 0 || num === 0
+            ? `${theme.textColor} font-black transition-colors duration-300`
+            : "text-slate-300 font-normal transition-colors duration-300";
         }
 
         container.appendChild(span);
@@ -899,25 +862,16 @@
 
       const baseDigits = [];
       const highestDigitChar = numStr.charAt(0);
-      const highestDigitVal = parseInt(highestDigitChar);
-
-      let highestColorTheme = "";
-      let highestReading = "";
-      if (len === 3) {
-        highestColorTheme = "border-emerald-500 bg-white text-emerald-600"; 
-        highestReading = getReadingText(highestDigitVal * 100);
-      } else {
-        highestColorTheme = "border-sky-500 bg-white text-sky-600"; 
-        highestReading = getReadingText(highestDigitVal * 10);
-      }
+      const decomposition = getDigitDecomposition(num);
+      const highestItem = decomposition.find(item => item.digitIndex === 0);
 
       baseDigits.push({
         digitIndex: 0,
         char: highestDigitChar,
-        reading: highestReading,
-        colorTheme: highestColorTheme,
-        borderColor: len === 3 ? "border-emerald-400" : "border-sky-400",
-        decompItem: len === 3 ? {label: (highestDigitVal * 100).toString(), reading: highestReading, color: 'bg-emerald-100 text-emerald-800 border-emerald-300'} : {label: (highestDigitVal * 10).toString(), reading: highestReading, color: 'bg-sky-100 text-sky-800 border-sky-300'}
+        reading: highestItem.sequenceReading,
+        colorTheme: highestItem.colorTheme,
+        borderColor: highestItem.borderColor,
+        decompItem: highestItem
       });
 
       for (let i = 1; i < len; i++) {
@@ -983,23 +937,8 @@
         const digitIndex = i;
         const cell = cells[digitIndex];
 
-        let colorTheme = "";
-        let reading = "";
-        let borderColor = "";
-        let decompItem = null;
-
-        if (len === 3 && digitIndex === 1) {
-          colorTheme = "border-sky-500 bg-white text-sky-600";
-          reading = getReadingText(val * 10);
-          borderColor = "border-sky-400";
-          decompItem = {label: (val * 10).toString(), reading: reading, color: 'bg-sky-100 text-sky-800 border-sky-300'};
-        } else {
-          colorTheme = "border-rose-500 bg-white text-rose-600";
-          const oReadings = {1:'いち', 2:'に', 3:'さん', 4:'よん', 5:'ご', 6:'ろく', 7:'なな', 8:'はち', 9:'きゅう'};
-          reading = oReadings[val];
-          borderColor = "border-rose-400";
-          decompItem = {label: val.toString(), reading: reading, color: 'bg-rose-100 text-rose-800 border-rose-300'};
-        }
+        const decompItem = decomposition.find(item => item.digitIndex === digitIndex);
+        const { colorTheme, sequenceReading: reading, borderColor } = decompItem;
 
         const stepIdx = i;
 
@@ -1058,16 +997,10 @@
 
               card.classList.remove('border-slate-300', 'bg-slate-100', 'text-slate-400');
               
-              let activeColorTheme = "";
-              let activeRingColor = "";
-              if (len === 3 && i === 1) {
-                activeColorTheme = "border-sky-500 bg-white text-sky-600";
-                activeRingColor = "border-sky-400";
-              } else {
-                activeColorTheme = "border-rose-500 bg-white text-rose-600";
-                activeRingColor = "border-rose-400";
-              }
-              
+              const theme = getQuizPlaceTheme(len - i - 1);
+              const activeColorTheme = theme.colorTheme;
+              const activeRingColor = theme.borderColor;
+
               card.className += ` ${activeColorTheme} transition-colors duration-300`;
 
               if (ring) {
